@@ -1,57 +1,30 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
   Text,
   TouchableOpacity,
   StatusBar,
-  Animated,
-  Easing,
-  ActivityIndicator,
   Dimensions,
-  Platform,
+  ActivityIndicator,
 } from "react-native";
 import MapView, { Marker, Circle, PROVIDER_DEFAULT } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
-import {
-  Feather,
-  Ionicons,
-  FontAwesome5,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
+import { Feather, FontAwesome5, Ionicons } from "@expo/vector-icons";
+import { COLORS, SHADOWS, SPACING } from "../constants/theme";
 import { socket, connectSocket } from "../lib/socket";
-
 import useLocationStore from "../../store/locationStore";
 import useAuthStore from "../../store/authStore";
-import { useSignOut } from "../hooks/auth";
 import { useUpdateSearchRadius } from "../hooks/location";
 
-const { width, height } = Dimensions.get("window");
-
-const THEME = {
-  CYAN: "#00F0FF",
-  PURPLE: "#BD00FF",
-  SUCCESS: "#00FF94",
-  DANGER: "#FF2E63",
-  BG: "#05070A",
-  SURFACE: "rgba(30, 34, 45, 0.8)",
-  BORDER: "rgba(0, 240, 255, 0.3)",
-  GLOW: "rgba(0, 240, 255, 0.4)",
-};
+const { width } = Dimensions.get("window");
 
 export default function RealtimeMap() {
   const mapRef = useRef<MapView>(null);
   const { user } = useAuthStore();
-  const signOutMutation = useSignOut();
   const updateSearchRadiusMutation = useUpdateSearchRadius();
 
-  const [isLive, setIsLive] = useState(socket.connected);
-  const [isStealth, setIsStealth] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isReconnecting, setIsReconnecting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInvisible, setIsInvisible] = useState(false);
 
   const {
     myLocation,
@@ -62,87 +35,21 @@ export default function RealtimeMap() {
     nearbyUsers,
   } = useLocationStore();
 
-  // Animations
-  const scanAnim = useRef(new Animated.Value(0)).current;
-  const rippleAnim = useRef(new Animated.Value(0)).current;
-  const statusPulse = useRef(new Animated.Value(0.6)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
-
-  // Tactical Scan Effect
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(scanAnim, {
-          toValue: 1,
-          duration: 4000,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scanAnim, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.timing(rippleAnim, {
-        toValue: 1,
-        duration: 3000,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      })
-    ).start();
-  }, []);
-
-  // Socket and Reconnection Logic
-  useEffect(() => {
-    if (!socket.connected) {
-      setIsReconnecting(true);
-      connectSocket();
-    }
-
-    const onConnect = () => {
-      setIsLive(true);
-      setIsReconnecting(false);
-    };
-    const onDisconnect = () => setIsLive(false);
-
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-
-    return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-    };
-  }, []);
-
-  const initTracking = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      await startTracking();
-      setTimeout(() => {
-        mapRef.current?.animateCamera(
-          {
-            center: { latitude: myLocation.lat, longitude: myLocation.lng },
-            pitch: 45,
-            heading: 0,
-            zoom: 18,
-          },
-          { duration: 1500 }
-        );
-        setIsLoading(false);
-      }, 1000);
-    } catch (err) {
-      setIsLoading(false);
-    }
-  }, [startTracking, myLocation]);
-
-  useEffect(() => {
-    initTracking();
+    if (!socket.connected) connectSocket();
+    startTracking();
     return () => stopTracking();
   }, []);
+
+  // Update initial camera
+  useEffect(() => {
+    if (myLocation.lat && mapRef.current) {
+      mapRef.current.animateCamera({
+        center: { latitude: myLocation.lat, longitude: myLocation.lng },
+        zoom: 15,
+      });
+    }
+  }, [myLocation.lat]);
 
   const updateRadius = (radius: number) => {
     const newRadius = Math.max(100, Math.min(5000, radius));
@@ -150,221 +57,109 @@ export default function RealtimeMap() {
     updateSearchRadiusMutation.mutate({ radius: newRadius });
   };
 
-  if (isLoggingOut) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={THEME.CYAN} />
-        <Text style={styles.loadingText}>TERMINATING SESSION...</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-
-      {/* TACTICAL SCANNING OVERLAY */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Animated.View
-          style={[
-            styles.scanLine,
-            {
-              transform: [
-                {
-                  translateY: scanAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, height],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <LinearGradient
-            colors={["transparent", THEME.CYAN, "transparent"]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={{ flex: 1, opacity: 0.2 }}
-          />
-        </Animated.View>
-      </View>
+      <StatusBar barStyle="dark-content" />
 
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         provider={PROVIDER_DEFAULT}
-        customMapStyle={DARK_MAP_STYLE}
+        showsUserLocation={false} // We render custom markers
         showsCompass={false}
       >
         {myLocation.lat && (
           <Circle
-            key="search-radius"
-            center={{
-              latitude: myLocation.lat,
-              longitude: myLocation.lng,
-            }}
-            radius={!isStealth ? searchRadius : 0}
-            fillColor={!isStealth ? "rgba(0, 240, 255, 0.05)" : "transparent"}
-            strokeColor={!isStealth ? THEME.CYAN : "transparent"}
-            strokeWidth={!isStealth ? 1.5 : 0}
+            center={{ latitude: myLocation.lat, longitude: myLocation.lng }}
+            radius={!isInvisible ? searchRadius : 0}
+            fillColor="rgba(79, 70, 229, 0.1)"
+            strokeColor={COLORS.PRIMARY}
+            strokeWidth={1}
           />
         )}
 
+        {/* My Marker */}
         {myLocation.lat && (
           <Marker
-            key="user-location"
-            coordinate={{
-              latitude: myLocation.lat,
-              longitude: myLocation.lng,
-            }}
+            coordinate={{ latitude: myLocation.lat, longitude: myLocation.lng }}
             anchor={{ x: 0.5, y: 0.5 }}
           >
-            {!isStealth && (
-              <View style={styles.myLocationContainer}>
-                <Animated.View
-                  style={[
-                    styles.ripple,
-                    {
-                      transform: [
-                        {
-                          scale: rippleAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [1, 4],
-                          }),
-                        },
-                      ],
-                      opacity: rippleAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.5, 0],
-                      }),
-                    },
-                  ]}
-                />
-                <View style={styles.coreGlow}>
-                  <View style={styles.coreSolid} />
-                </View>
-              </View>
-            )}
+            <View style={styles.myMarker}>
+              <View style={styles.myMarkerDot} />
+            </View>
           </Marker>
         )}
 
+        {/* Nearby Users */}
         {nearbyUsers
           .filter((u) => u.id !== user?.id)
           .map((u) => (
             <Marker
               key={`nearby-${u.id}`}
               coordinate={{ latitude: u.lat, longitude: u.lng }}
-              anchor={{ x: 0.5, y: 1 }}
             >
-              <View style={styles.userPinContainer}>
-                <LinearGradient
-                  colors={[THEME.PURPLE, "#7000FF"]}
-                  style={styles.pinHead}
-                >
-                  <FontAwesome5 name="dog" size={12} color="#FFF" />
-                </LinearGradient>
-                <View
-                  style={[styles.pinStick, { backgroundColor: THEME.PURPLE }]}
-                />
+              <View style={styles.otherMarker}>
+                <FontAwesome5 name="dog" size={12} color="#FFF" />
               </View>
             </Marker>
           ))}
       </MapView>
 
-      {/* TOP GLASS HUD */}
+      {/* Top Search Bar Style HUD */}
       <SafeAreaView style={styles.topContainer} pointerEvents="box-none">
-        <BlurView intensity={30} tint="dark" style={styles.modernHud}>
-          <View style={styles.hudContent}>
-            <View style={styles.profileSection}>
-              <LinearGradient
-                colors={[THEME.CYAN, THEME.PURPLE]}
-                style={styles.miniAvatar}
-              >
-                <Text style={styles.avatarText}>
-                  {user?.email[0].toUpperCase()}
-                </Text>
-              </LinearGradient>
-              <View>
-                <Text style={styles.hudTitle}>
-                  Cy<Text style={{ color: THEME.CYAN }}>Dog</Text>
-                </Text>
-                <Text style={styles.systemStatus}>
-                  {isLive ? "● ENCRYPTED LINK" : "○ OFFLINE"}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.hudStats}>
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>UNITS</Text>
-                <Text style={styles.statValue}>{nearbyUsers.length}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => signOutMutation.mutate()}
-                style={styles.iconBtn}
-              >
-                <Feather name="power" size={18} color={THEME.DANGER} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </BlurView>
+        <View style={styles.searchCard}>
+          <View style={styles.statusDot} />
+          <Text style={styles.statusText}>
+            {nearbyUsers.length - 1 > 0
+              ? `${nearbyUsers.length - 1} active nearby`
+              : "Scanning for friends..."}
+          </Text>
+        </View>
       </SafeAreaView>
 
-      {/* BOTTOM CONTROL HUB */}
-      <View style={styles.bottomContainer} pointerEvents="box-none">
-        <View style={styles.controlRow}>
-          {/* Quick Actions */}
-          <BlurView intensity={40} tint="dark" style={styles.sideTool}>
-            <TouchableOpacity
-              onPress={() => setIsStealth(!isStealth)}
-              style={styles.toolBtn}
-            >
-              <MaterialCommunityIcons
-                name={isStealth ? "eye-off" : "eye"}
-                size={22}
-                color={isStealth ? THEME.PURPLE : "#FFF"}
-              />
-            </TouchableOpacity>
-          </BlurView>
+      {/* Bottom Controls */}
+      <View style={styles.bottomContainer}>
+        {/* Radius Controls */}
+        <View style={styles.controlCard}>
+          <TouchableOpacity onPress={() => updateRadius(searchRadius - 200)}>
+            <Feather name="minus" size={20} color={COLORS.TEXT_PRIMARY} />
+          </TouchableOpacity>
+          <Text style={styles.radiusText}>{searchRadius}m range</Text>
+          <TouchableOpacity onPress={() => updateRadius(searchRadius + 200)}>
+            <Feather name="plus" size={20} color={COLORS.TEXT_PRIMARY} />
+          </TouchableOpacity>
+        </View>
 
-          {/* Radius Slider Panel */}
-          <BlurView intensity={60} tint="dark" style={styles.radiusPanel}>
-            <TouchableOpacity onPress={() => updateRadius(searchRadius - 100)}>
-              <Feather name="minus-circle" size={24} color={THEME.CYAN} />
-            </TouchableOpacity>
-            <View style={styles.radiusInfo}>
-              <Text style={styles.radiusValue}>{searchRadius}m</Text>
-              <View style={styles.progressBar}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: `${(searchRadius / 2000) * 100}%` },
-                  ]}
-                />
-              </View>
-            </View>
-            <TouchableOpacity onPress={() => updateRadius(searchRadius + 100)}>
-              <Feather name="plus-circle" size={24} color={THEME.CYAN} />
-            </TouchableOpacity>
-          </BlurView>
-
-          {/* Location Center */}
+        {/* Action Buttons */}
+        <View style={styles.fabRow}>
           <TouchableOpacity
-            style={styles.fab}
-            onPress={() =>
-              mapRef.current?.animateToRegion({
-                latitude: myLocation.lat,
-                longitude: myLocation.lng,
-                latitudeDelta: 0.005,
-                longitudeDelta: 0.005,
-              })
-            }
+            style={[
+              styles.fab,
+              { backgroundColor: isInvisible ? COLORS.TEXT_PRIMARY : "#FFF" },
+            ]}
+            onPress={() => setIsInvisible(!isInvisible)}
           >
-            <LinearGradient
-              colors={[THEME.CYAN, THEME.PURPLE]}
-              style={styles.fabInner}
-            >
-              <Ionicons name="navigate" size={24} color="#FFF" />
-            </LinearGradient>
+            <Feather
+              name={isInvisible ? "eye-off" : "eye"}
+              size={24}
+              color={isInvisible ? "#FFF" : COLORS.TEXT_PRIMARY}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.fab, styles.primaryFab]}
+            onPress={() => {
+              if (myLocation.lat) {
+                mapRef.current?.animateToRegion({
+                  latitude: myLocation.lat,
+                  longitude: myLocation.lng,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                });
+              }
+            }}
+          >
+            <Ionicons name="navigate" size={24} color="#FFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -373,179 +168,86 @@ export default function RealtimeMap() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: THEME.BG },
-  scanLine: { position: "absolute", width: "100%", height: 2, zIndex: 1 },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: THEME.BG,
-    justifyContent: "center",
+  container: { flex: 1, backgroundColor: COLORS.BG_MAIN },
+  topContainer: { paddingHorizontal: SPACING.l, paddingTop: SPACING.s },
+  searchCard: {
+    flexDirection: "row",
     alignItems: "center",
-  },
-  loadingText: {
-    color: THEME.CYAN,
-    marginTop: 20,
-    fontWeight: "900",
-    letterSpacing: 2,
-  },
-
-  // My Location Marker
-  myLocationContainer: {
-    width: 60,
-    height: 60,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ripple: {
-    position: "absolute",
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 2,
-    borderColor: THEME.CYAN,
-  },
-  coreGlow: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "rgba(0, 240, 255, 0.4)",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: THEME.CYAN,
-    shadowRadius: 12,
-    shadowOpacity: 1,
-    elevation: 15,
-  },
-  coreSolid: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
     backgroundColor: "#FFF",
+    padding: SPACING.m,
+    borderRadius: 12,
+    ...SHADOWS.md,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.ACCENT,
+    marginRight: 8,
+  },
+  statusText: {
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: "500",
   },
 
-  // User Markers
-  userPinContainer: { alignItems: "center" },
-  pinHead: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderBottomLeftRadius: 2,
-    transform: [{ rotate: "45deg" }],
+  // Markers
+  myMarker: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(79, 70, 229, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  myMarkerDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: COLORS.PRIMARY,
+    borderWidth: 2,
+    borderColor: "#FFF",
+  },
+  otherMarker: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.ACCENT,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#FFF",
+    ...SHADOWS.sm,
   },
-  pinStick: { width: 3, height: 6, marginTop: -2 },
 
-  // Top HUD
-  topContainer: {
+  // Bottom
+  bottomContainer: {
     position: "absolute",
-    top: 10,
-    left: 16,
-    right: 16,
-    zIndex: 10,
+    bottom: 30,
+    left: 20,
+    right: 20,
   },
-  modernHud: {
-    borderRadius: 25,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: THEME.BORDER,
-  },
-  hudContent: {
+  controlCard: {
     flexDirection: "row",
-    padding: 12,
-    alignItems: "center",
     justifyContent: "space-between",
-  },
-  profileSection: { flexDirection: "row", alignItems: "center" },
-  miniAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
     alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  avatarText: { color: "#FFF", fontWeight: "bold" },
-  hudTitle: { color: "#FFF", fontSize: 18, fontWeight: "900" },
-  systemStatus: {
-    color: THEME.SUCCESS,
-    fontSize: 8,
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
-  hudStats: { flexDirection: "row", alignItems: "center" },
-  statItem: { alignItems: "flex-end", marginRight: 15 },
-  statLabel: { color: "rgba(255,255,255,0.5)", fontSize: 7, fontWeight: "900" },
-  statValue: { color: THEME.CYAN, fontSize: 16, fontWeight: "900" },
-  iconBtn: {
-    padding: 8,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "#FFF",
+    padding: SPACING.m,
     borderRadius: 12,
+    marginBottom: SPACING.m,
+    ...SHADOWS.sm,
   },
-
-  // Bottom Controls
-  bottomContainer: { position: "absolute", bottom: 30, left: 16, right: 16 },
-  controlRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  sideTool: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: THEME.BORDER,
-  },
-  toolBtn: { flex: 1, alignItems: "center", justifyContent: "center" },
-  radiusPanel: {
-    flex: 1,
-    marginHorizontal: 12,
-    height: 54,
-    borderRadius: 27,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: THEME.BORDER,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 15,
-  },
-  radiusInfo: { flex: 1, alignItems: "center", paddingHorizontal: 10 },
-  radiusValue: { color: "#FFF", fontWeight: "900", fontSize: 16 },
-  progressBar: {
-    height: 3,
-    width: "100%",
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 2,
-    marginTop: 4,
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: THEME.CYAN,
-    borderRadius: 2,
-  },
-  fab: { width: 54, height: 54, borderRadius: 27, elevation: 5 },
-  fabInner: {
-    flex: 1,
-    borderRadius: 27,
+  radiusText: { fontWeight: "600", color: COLORS.TEXT_PRIMARY },
+  fabRow: { flexDirection: "row", justifyContent: "space-between" },
+  fab: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#FFF",
     alignItems: "center",
     justifyContent: "center",
+    ...SHADOWS.md,
+  },
+  primaryFab: {
+    backgroundColor: COLORS.PRIMARY,
   },
 });
-
-const DARK_MAP_STYLE = [
-  { elementType: "geometry", stylers: [{ color: "#05070A" }] },
-  {
-    featureType: "water",
-    elementType: "geometry",
-    stylers: [{ color: "#000000" }],
-  },
-  {
-    featureType: "road",
-    elementType: "geometry",
-    stylers: [{ color: "#1A1E26" }],
-  },
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-];

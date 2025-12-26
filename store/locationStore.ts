@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
-import { socket, disconnectSocket } from "../src/lib/socket";
 import useAuthStore from "./authStore";
 
 export interface NearbyUser {
@@ -32,6 +31,7 @@ interface LocationState {
   searchRadius: number;
   filters: LocationFilters;
   isTracking: boolean;
+  isUpdatingFromSocket: boolean; // Flag to prevent recursive updates
 
   // Actions
   setCurrentLocation: (location: { lat: number; lng: number }) => void;
@@ -42,6 +42,7 @@ interface LocationState {
   setSearchRadius: (radius: number) => void;
   setFilters: (filters: LocationFilters) => void;
   setIsTracking: (tracking: boolean) => void;
+  setIsUpdatingFromSocket: (updating: boolean) => void;
   clearLocationData: () => void;
 
   // Legacy methods for compatibility
@@ -61,6 +62,7 @@ const useLocationStore = create<LocationState>()(
         searchRadius: 1000, // Default 1km
         filters: {},
         isTracking: false,
+        isUpdatingFromSocket: false,
 
         // Legacy property for backward compatibility
         myLocation: { lat: 32.0853, lng: 34.7818 },
@@ -93,6 +95,9 @@ const useLocationStore = create<LocationState>()(
           set((state) => ({ filters: { ...state.filters, ...filters } })),
 
         setIsTracking: (tracking) => set({ isTracking: tracking }),
+
+        setIsUpdatingFromSocket: (updating) =>
+          set({ isUpdatingFromSocket: updating }),
 
         clearLocationData: () =>
           set({
@@ -128,14 +133,19 @@ const useLocationStore = create<LocationState>()(
                 isTracking: true,
               });
 
-              // Notify server with filters
+              // Notify server with filters (only if not updating from socket)
               const state = get();
-              socket.emit("update_location", {
-                userId: user.id,
-                lat: latitude,
-                lng: longitude,
-                filters: state.filters,
-              });
+              if (!state.isUpdatingFromSocket) {
+                // Lazy import to avoid circular dependency
+                import("../src/lib/socket").then(({ socket }) => {
+                  socket.emit("update_location", {
+                    userId: user.id,
+                    lat: latitude,
+                    lng: longitude,
+                    filters: state.filters,
+                  });
+                });
+              }
             }
           );
         },

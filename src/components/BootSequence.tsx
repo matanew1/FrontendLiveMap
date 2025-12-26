@@ -1,32 +1,29 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, StyleSheet, Animated, Easing } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { View, StyleSheet, Animated, Text } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { COLORS, SHADOWS } from "../constants/theme";
+import { COLORS } from "../constants/theme";
+
+interface BootStep {
+  label: string;
+  completed: boolean;
+}
 
 export default function BootSequence({
+  steps,
   onComplete,
 }: {
+  steps: BootStep[];
   onComplete: () => void;
 }) {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const [status, setStatus] = React.useState("Initializing...");
-
-  const statusMessages = [
-    "Initializing...",
-    "Scanning Networks...",
-    "Decrypting Data...",
-    "System Online",
-  ];
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Entrance Animation
+    // Elegant entrance
     Animated.parallel([
-      Animated.timing(fadeAnim, {
+      Animated.timing(opacityAnim, {
         toValue: 1,
-        duration: 800,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
@@ -36,132 +33,93 @@ export default function BootSequence({
       }),
     ]).start();
 
-    // Status Message Cycle
-    let i = 0;
-    const interval = setInterval(() => {
-      if (i < statusMessages.length) {
-        setStatus(statusMessages[i]);
-        i++;
-      }
-    }, 600);
-
-    // Progress Bar & Exit
-    Animated.timing(progressAnim, {
-      toValue: 1,
-      duration: 2500,
-      easing: Easing.inOut(Easing.quad),
-      useNativeDriver: false,
-    }).start(() => {
-      // Exit animation
-      Animated.timing(fadeAnim, {
+    // Check if all steps are completed
+    const allCompleted = steps.every((step) => step.completed);
+    if (allCompleted) {
+      // Elegant exit
+      Animated.timing(opacityAnim, {
         toValue: 0,
-        duration: 500,
+        duration: 300,
         useNativeDriver: true,
-      }).start(() => onComplete());
-    });
-
-    return () => clearInterval(interval);
-  }, []);
+      }).start(onComplete);
+    }
+  }, [steps, onComplete]);
 
   return (
-    <LinearGradient
-      colors={[COLORS.BG_DARK, "#0A0F1A", COLORS.BG_DARK]}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <Animated.View
-        style={[
-          styles.content,
-          { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
-        ]}
+        style={{ opacity: opacityAnim, transform: [{ scale: scaleAnim }] }}
       >
-        <View style={styles.logoContainer}>
-          <LinearGradient
-            colors={[COLORS.CYAN, COLORS.PURPLE]}
-            style={styles.logoGlow}
-          >
+        <View style={styles.content}>
+          <View style={styles.iconContainer}>
             <MaterialCommunityIcons
-              name="map-marker-path"
-              size={60}
-              color="#FFF"
+              name="dog-side"
+              size={64}
+              color={COLORS.PRIMARY}
             />
-          </LinearGradient>
-        </View>
+          </View>
 
-        <Text style={styles.title}>
-          Cy<Text style={{ color: COLORS.CYAN }}>Dog</Text>
-        </Text>
-
-        <View style={styles.loaderWrapper}>
-          <Text style={styles.statusText}>{status}</Text>
-          <View style={styles.progressBarBg}>
-            <LinearGradient
-              colors={[COLORS.CYAN, COLORS.PURPLE]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[
-                styles.progressFill,
-                {
-                  width: progressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ["0%", "100%"],
-                  }),
-                },
-              ]}
-            />
+          <View style={styles.stepsContainer}>
+            {steps.map((step, index) => (
+              <View key={index} style={styles.stepRow}>
+                <MaterialCommunityIcons
+                  name={step.completed ? "check-circle" : "circle-outline"}
+                  size={20}
+                  color={step.completed ? COLORS.ACCENT : COLORS.TEXT_SECONDARY}
+                />
+                <Text
+                  style={[
+                    styles.stepText,
+                    step.completed && styles.stepTextCompleted,
+                  ]}
+                >
+                  {step.label}
+                </Text>
+              </View>
+            ))}
           </View>
         </View>
       </Animated.View>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.BG_MAIN,
     justifyContent: "center",
     alignItems: "center",
   },
-  content: { alignItems: "center", width: "80%" },
-  logoContainer: { marginBottom: 20 },
-  logoGlow: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  content: {
     alignItems: "center",
-    justifyContent: "center",
-    shadowColor: COLORS.CYAN,
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
+  },
+  iconContainer: {
+    padding: 20,
+    backgroundColor: COLORS.BG_CARD,
+    borderRadius: 24,
+    shadowColor: COLORS.PRIMARY,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
     elevation: 10,
+    marginBottom: 30,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: COLORS.TEXT_PRIMARY,
-    letterSpacing: 1,
-    textShadowColor: COLORS.CYAN,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
+  stepsContainer: {
+    width: 250,
   },
-  loaderWrapper: { width: "100%", marginTop: 50 },
-  statusText: {
+  stepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  stepText: {
+    fontSize: 16,
     color: COLORS.TEXT_SECONDARY,
-    fontSize: 14,
-    marginBottom: 10,
+    marginLeft: 12,
     fontWeight: "500",
-    textAlign: "center",
   },
-  progressBarBg: {
-    width: "100%",
-    height: 6,
-    backgroundColor: "#1A1E26",
-    borderRadius: 3,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: COLORS.CYAN,
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 3,
+  stepTextCompleted: {
+    color: COLORS.ACCENT,
   },
 });

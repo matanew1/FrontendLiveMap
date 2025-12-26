@@ -2,316 +2,228 @@ import React from "react";
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
+  StyleSheet,
   TouchableOpacity,
   RefreshControl,
   StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
+import { Feather } from "@expo/vector-icons";
 import { COLORS, SPACING, SHADOWS } from "../constants/theme";
-import { Platform } from "react-native";
+import { Skeleton } from "../components/Skeleton";
 
 // Mock Data
 const MOCK_POSTS = [
   {
     id: "1",
-    user: "Rex_Cyber",
-    rank: "ELITE",
-    breed: "Husky Model-X",
-    content: "Sector 7 patrol complete. No anomalies detected.",
-    time: "02:14 PM",
+    user: "Rex the Husky",
+    location: "Central Park",
+    content:
+      "Just finished a 5k run with my human. The squirrels are fast today!",
+    time: "2h ago",
     likes: 128,
   },
   {
     id: "2",
-    user: "Luna_Labs",
-    rank: "ROOKIE",
-    breed: "Golden Ret. v2",
-    content: "Upgraded my collar firmware. Tracking efficiency +15%.",
-    time: "01:45 PM",
+    user: "Luna Retriever",
+    location: "Downtown",
+    content: "Checking in at the new pet-friendly cafe.",
+    time: "4h ago",
     likes: 84,
   },
 ];
 
 export default function DashboardScreen() {
   const [refreshing, setRefreshing] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    // Simulate initial data fetch
+    setTimeout(() => setLoading(false), 2000);
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1500);
   };
 
+  const renderSkeleton = () => (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <Skeleton width={40} height={40} style={{ borderRadius: 20 }} />
+        <View style={{ marginLeft: 12 }}>
+          <Skeleton width={120} height={16} style={{ marginBottom: 6 }} />
+          <Skeleton width={80} height={12} />
+        </View>
+      </View>
+      <Skeleton width="100%" height={60} style={{ marginVertical: 12 }} />
+      <Skeleton width="100%" height={200} style={{ borderRadius: 8 }} />
+    </View>
+  );
+
   const renderPost = ({ item }: any) => (
-    <View style={styles.cardContainer}>
-      {/* Glow behind the card */}
-      <View style={styles.cardGlow} />
-
-      <BlurView intensity={30} tint="dark" style={styles.postCard}>
-        {/* Header */}
-        <View style={styles.postHeader}>
-          <LinearGradient
-            colors={[COLORS.CYAN, COLORS.PURPLE]}
-            style={styles.avatarBorder}
-          >
-            <View style={styles.avatarInner}>
-              <Text style={styles.avatarText}>{item.user[0]}</Text>
-            </View>
-          </LinearGradient>
-
-          <View style={styles.headerText}>
-            <View style={styles.nameRow}>
-              <Text style={styles.postUser}>{item.user}</Text>
-              <View style={styles.rankBadge}>
-                <Text style={styles.rankText}>{item.rank}</Text>
-              </View>
-            </View>
-            <Text style={styles.postSub}>
-              ID: {item.breed} •{" "}
-              <Text style={{ color: COLORS.CYAN }}>{item.time}</Text>
-            </Text>
-          </View>
-
-          <TouchableOpacity style={styles.moreBtn}>
-            <Feather
-              name="more-horizontal"
-              size={20}
-              color={COLORS.TEXT_SECONDARY}
-            />
-          </TouchableOpacity>
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{item.user[0]}</Text>
         </View>
+        <View>
+          <Text style={styles.userName}>{item.user}</Text>
+          <Text style={styles.metaText}>
+            {item.location} • {item.time}
+          </Text>
+        </View>
+      </View>
 
-        {/* Media Placeholder - Digital Noise Style */}
-        <View style={styles.mediaContainer}>
-          <MaterialCommunityIcons
-            name="waveform"
-            size={64}
-            color={COLORS.NEON_BORDER}
+      <Text style={styles.postContent}>{item.content}</Text>
+
+      {/* Placeholder Image Area */}
+      <View style={styles.mediaPlaceholder}>
+        <Feather name="image" size={32} color={COLORS.TEXT_TERTIARY} />
+      </View>
+
+      <View style={styles.actionRow}>
+        <TouchableOpacity style={styles.actionBtn}>
+          <Feather name="heart" size={18} color={COLORS.TEXT_SECONDARY} />
+          <Text style={styles.actionText}>{item.likes}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionBtn}>
+          <Feather
+            name="message-square"
+            size={18}
+            color={COLORS.TEXT_SECONDARY}
           />
-          <Text style={styles.mediaText}>ENCRYPTED_SIGNAL_RECEIVED</Text>
-        </View>
-
-        {/* Content & Actions */}
-        <View style={styles.contentSection}>
-          <Text style={styles.postContent}>{item.content}</Text>
-
-          <View style={styles.divider} />
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.actionBtn}>
-              <Feather name="heart" size={18} color={COLORS.DANGER} />
-              <Text style={styles.actionText}>{item.likes}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionBtn}>
-              <Feather
-                name="message-square"
-                size={18}
-                color={COLORS.TEXT_PRIMARY}
-              />
-              <Text style={styles.actionText}>REPLY</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionBtn}>
-              <Feather name="share-2" size={18} color={COLORS.CYAN} />
-              <Text style={styles.actionText}>LINK</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </BlurView>
+          <Text style={styles.actionText}>Comment</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionBtn}>
+          <Feather name="share-2" size={18} color={COLORS.TEXT_SECONDARY} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <LinearGradient
-        colors={[COLORS.BG_DEEP, COLORS.BG_DARK]}
-        style={StyleSheet.absoluteFill}
-      />
-
-      {/* Background Grid/Decoration */}
-      <View style={styles.gridLine} />
-
-      <SafeAreaView style={{ flex: 1 }}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.BG_MAIN} />
+      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
         <View style={styles.header}>
-          <View>
-            <Text style={styles.headerSubtitle}>SYSTEM FEED</Text>
-            <Text style={styles.headerTitle}>
-              CY<Text style={{ color: COLORS.CYAN }}>LOGS</Text>
-            </Text>
-          </View>
-          <TouchableOpacity style={styles.addBtn}>
-            <LinearGradient
-              colors={[COLORS.CYAN, COLORS.PURPLE]}
-              style={styles.addBtnGradient}
-            >
-              <Feather name="plus" size={24} color="#FFF" />
-            </LinearGradient>
+          <Text style={styles.headerTitle}>Activity Feed</Text>
+          <TouchableOpacity style={styles.iconBtn}>
+            <Feather name="bell" size={24} color={COLORS.TEXT_PRIMARY} />
           </TouchableOpacity>
         </View>
 
-        <FlatList
-          data={MOCK_POSTS}
-          renderItem={renderPost}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.CYAN}
-            />
-          }
-        />
+        {loading ? (
+          <View style={{ padding: SPACING.m }}>
+            {renderSkeleton()}
+            {renderSkeleton()}
+          </View>
+        ) : (
+          <FlatList
+            data={MOCK_POSTS}
+            renderItem={renderPost}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+          />
+        )}
       </SafeAreaView>
+
+      {/* Floating Action Button */}
+      <TouchableOpacity style={styles.fab}>
+        <Feather name="plus" size={24} color="#FFF" />
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.BG_DARK },
-  gridLine: {
-    position: "absolute",
-    top: "20%",
-    width: "100%",
-    height: 1,
-    backgroundColor: COLORS.NEON_BORDER,
-    opacity: 0.2,
-  },
+  container: { flex: 1, backgroundColor: COLORS.BG_MAIN },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: SPACING.l,
     paddingVertical: SPACING.m,
-  },
-  headerSubtitle: {
-    color: COLORS.TEXT_SECONDARY,
-    fontSize: 10,
-    fontWeight: "bold",
-    letterSpacing: 2,
-    marginBottom: 2,
+    backgroundColor: COLORS.BG_MAIN,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#FFF",
-    letterSpacing: 1,
-    fontStyle: "italic",
+    fontSize: 24,
+    fontWeight: "bold",
+    color: COLORS.TEXT_PRIMARY,
   },
-  addBtn: {
-    shadowColor: COLORS.CYAN,
-    shadowRadius: 10,
-    shadowOpacity: 0.4,
-  },
-  addBtnGradient: {
-    width: 44,
-    height: 44,
+  iconBtn: { padding: 8 },
+  listContent: { padding: SPACING.m, paddingBottom: 100 },
+  card: {
+    backgroundColor: COLORS.BG_CARD,
     borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
+    padding: SPACING.m,
+    marginBottom: SPACING.m,
+    ...SHADOWS.sm,
   },
-  listContent: {
-    padding: SPACING.l,
-    paddingBottom: 120, // Space for TabBar
-  },
-  // Card Styles
-  cardContainer: {
-    marginBottom: SPACING.l,
-  },
-  cardGlow: {
-    position: "absolute",
-    top: 10,
-    left: 10,
-    right: 10,
-    bottom: -10,
-    backgroundColor: COLORS.CYAN,
-    opacity: 0.05,
-    borderRadius: 24,
-    transform: [{ scale: 0.95 }],
-  },
-  postCard: {
-    borderRadius: 24,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: COLORS.GLASS_BORDER,
-    backgroundColor: "rgba(30, 34, 45, 0.4)",
-  },
-  postHeader: {
+  cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    padding: SPACING.m,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.05)",
+    marginBottom: SPACING.s,
   },
-  avatarBorder: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    padding: 2,
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.PRIMARY,
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: SPACING.s,
   },
-  avatarInner: {
-    flex: 1,
-    backgroundColor: COLORS.BG_DARK,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
+  avatarText: { color: "#FFF", fontWeight: "bold" },
+  userName: { fontWeight: "700", color: COLORS.TEXT_PRIMARY, fontSize: 15 },
+  metaText: { color: COLORS.TEXT_SECONDARY, fontSize: 12, marginTop: 2 },
+  postContent: {
+    fontSize: 15,
+    color: COLORS.TEXT_PRIMARY,
+    lineHeight: 22,
+    marginBottom: SPACING.m,
   },
-  avatarText: {
-    color: "#FFF",
-    fontWeight: "bold",
-  },
-  headerText: { flex: 1 },
-  nameRow: { flexDirection: "row", alignItems: "center" },
-  postUser: { color: "#FFF", fontWeight: "bold", fontSize: 16, marginRight: 8 },
-  rankBadge: {
-    backgroundColor: "rgba(189, 0, 255, 0.2)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "rgba(189, 0, 255, 0.4)",
-  },
-  rankText: { color: COLORS.PURPLE, fontSize: 8, fontWeight: "900" },
-  postSub: { color: COLORS.TEXT_SECONDARY, fontSize: 11, marginTop: 2 },
-  moreBtn: { padding: 4 },
-
-  mediaContainer: {
+  mediaPlaceholder: {
+    width: "100%",
     height: 200,
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: COLORS.BG_INPUT,
+    borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.05)",
+    marginBottom: SPACING.m,
   },
-  mediaText: {
-    color: COLORS.NEON_BORDER,
-    fontSize: 10,
-    marginTop: SPACING.s,
-    letterSpacing: 2,
-    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+  actionRow: {
+    flexDirection: "row",
+    paddingTop: SPACING.s,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.BG_INPUT,
   },
-  contentSection: { padding: SPACING.m },
-  postContent: { color: "#FFF", fontSize: 14, lineHeight: 20 },
-  divider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    marginVertical: SPACING.m,
-  },
-  actionRow: { flexDirection: "row", justifyContent: "space-between" },
   actionBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    marginRight: SPACING.l,
   },
-  actionText: { color: "#FFF", marginLeft: 6, fontSize: 12, fontWeight: "600" },
+  actionText: {
+    marginLeft: 6,
+    color: COLORS.TEXT_SECONDARY,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  fab: {
+    position: "absolute",
+    bottom: SPACING.l,
+    right: SPACING.l,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.PRIMARY,
+    alignItems: "center",
+    justifyContent: "center",
+    ...SHADOWS.lg,
+  },
 });

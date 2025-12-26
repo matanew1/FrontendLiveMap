@@ -52,28 +52,57 @@ socket.on(
   }) => {
     console.log("📍 Location update received:", data);
 
-    // Transform the data to use 'id' instead of 'user_id'
-    const transformedNearby = data.nearby.map((user) => ({
-      id: user.user_id,
-      email: user.email,
-      dogName: user.dogName,
-      dogBreed: user.dogBreed,
-      dogAge: user.dogAge,
-      lat: user.lat,
-      lng: user.lng,
-      distance: user.distance,
-    }));
+    // Get current user ID to filter out own updates
+    const getCurrentUserId = async () => {
+      try {
+        const token = await AsyncStorage.getItem("accessToken");
+        if (token) {
+          // We could decode the token or make a quick API call, but for now let's use a simpler approach
+          // The user ID should be available in the auth store
+          const useAuthStore = (await import("../../store/authStore")).default;
+          return useAuthStore.getState().user?.id;
+        }
+      } catch (error) {
+        console.error("Error getting current user ID:", error);
+      }
+      return null;
+    };
 
-    // Update nearby users in the store
-    useLocationStore.getState().setNearbyUsers(transformedNearby);
+    getCurrentUserId().then((currentUserId) => {
+      // Filter out current user's own location from nearby users
+      const filteredNearby = data.nearby.filter(
+        (user) => user.user_id !== currentUserId
+      );
 
-    // Update the specific user's location if they're in our nearby list
-    if (data.updated) {
-      useLocationStore.getState().updateNearbyUser(data.updated.user_id, {
-        lat: data.updated.lat,
-        lng: data.updated.lng,
-      });
-    }
+      // Transform the data to use 'id' instead of 'user_id'
+      const transformedNearby = filteredNearby.map((user) => ({
+        id: user.user_id,
+        email: user.email,
+        dogName: user.dogName,
+        dogBreed: user.dogBreed,
+        dogAge: user.dogAge,
+        lat: user.lat,
+        lng: user.lng,
+        distance: user.distance,
+      }));
+
+      // Update nearby users in the store
+      useLocationStore.getState().setIsUpdatingFromSocket(true);
+      useLocationStore.getState().setNearbyUsers(transformedNearby);
+
+      // Only update the specific user's location if it's not the current user
+      if (data.updated && data.updated.user_id !== currentUserId) {
+        useLocationStore.getState().updateNearbyUser(data.updated.user_id, {
+          lat: data.updated.lat,
+          lng: data.updated.lng,
+        });
+      }
+
+      // Reset the flag after a short delay
+      setTimeout(() => {
+        useLocationStore.getState().setIsUpdatingFromSocket(false);
+      }, 100);
+    });
   }
 );
 
@@ -90,7 +119,7 @@ export const connectSocket = async () => {
 
 export const disconnectSocket = () => {
   socket.disconnect();
-  useLocationStore.getState().clearLocationData();
+  // Note: clearLocationData is handled in locationStore when needed
 };
 
 // Location-related socket functions
