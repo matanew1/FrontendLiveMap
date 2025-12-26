@@ -5,10 +5,47 @@ import * as Location from "expo-location";
 import { socket, disconnectSocket } from "../src/lib/socket";
 import useAuthStore from "./authStore";
 
+export interface NearbyUser {
+  id: string;
+  user_id?: string; // For backward compatibility
+  email: string;
+  dogName?: string;
+  dogBreed?: string;
+  dogAge?: number;
+  lat: number;
+  lng: number;
+  distance: number;
+}
+
+export interface LocationFilters {
+  breed?: string;
+  age?: number;
+  radius?: number;
+}
+
 interface LocationState {
-  myLocation: { lat: number; lng: number };
+  currentLocation: {
+    lat: number;
+    lng: number;
+  } | null;
+  nearbyUsers: NearbyUser[];
   searchRadius: number;
+  filters: LocationFilters;
+  isTracking: boolean;
+
+  // Actions
+  setCurrentLocation: (location: { lat: number; lng: number }) => void;
+  setNearbyUsers: (users: NearbyUser[]) => void;
+  updateNearbyUsers: (users: NearbyUser[]) => void;
+  updateNearbyUser: (userId: string, updates: Partial<NearbyUser>) => void;
+  removeNearbyUser: (userId: string) => void;
   setSearchRadius: (radius: number) => void;
+  setFilters: (filters: LocationFilters) => void;
+  setIsTracking: (tracking: boolean) => void;
+  clearLocationData: () => void;
+
+  // Legacy methods for compatibility
+  myLocation: { lat: number; lng: number };
   startTracking: () => Promise<void>;
   stopTracking: () => void;
 }
@@ -19,12 +56,51 @@ const useLocationStore = create<LocationState>()(
       let locationSubscription: Location.LocationSubscription | null = null;
 
       return {
-        myLocation: { lat: 32.0853, lng: 34.7818 },
-        searchRadius: 500,
+        currentLocation: null,
+        nearbyUsers: [],
+        searchRadius: 1000, // Default 1km
+        filters: {},
+        isTracking: false,
 
-        setSearchRadius: (radius: number) => {
-          set({ searchRadius: radius });
-        },
+        // Legacy property for backward compatibility
+        myLocation: { lat: 32.0853, lng: 34.7818 },
+
+        setCurrentLocation: (location) =>
+          set({
+            currentLocation: location,
+            myLocation: location, // Keep legacy property in sync
+          }),
+
+        setNearbyUsers: (users) => set({ nearbyUsers: users }),
+
+        updateNearbyUsers: (users) => set({ nearbyUsers: users }),
+
+        updateNearbyUser: (userId, updates) =>
+          set((state) => ({
+            nearbyUsers: state.nearbyUsers.map((user) =>
+              user.id === userId ? { ...user, ...updates } : user
+            ),
+          })),
+
+        removeNearbyUser: (userId) =>
+          set((state) => ({
+            nearbyUsers: state.nearbyUsers.filter((user) => user.id !== userId),
+          })),
+
+        setSearchRadius: (radius) => set({ searchRadius: radius }),
+
+        setFilters: (filters) =>
+          set((state) => ({ filters: { ...state.filters, ...filters } })),
+
+        setIsTracking: (tracking) => set({ isTracking: tracking }),
+
+        clearLocationData: () =>
+          set({
+            currentLocation: null,
+            nearbyUsers: [],
+            isTracking: false,
+            myLocation: { lat: 32.0853, lng: 34.7818 }, // Reset to default
+          }),
 
         startTracking: async () => {
           const { status } = await Location.requestForegroundPermissionsAsync();
@@ -34,7 +110,7 @@ const useLocationStore = create<LocationState>()(
           const user = useAuthStore.getState().user;
           if (!user) return;
 
-          // Start GPS Watcher (Optimistic UI)
+          // Start GPS Watcher
           locationSubscription = await Location.watchPositionAsync(
             {
               accuracy: Location.Accuracy.BestForNavigation,
@@ -43,13 +119,22 @@ const useLocationStore = create<LocationState>()(
             },
             (location) => {
               const { latitude, longitude } = location.coords;
-              // Move my dot immediately
-              set({ myLocation: { lat: latitude, lng: longitude } });
-              // Notify others
+              const locationData = { lat: latitude, lng: longitude };
+
+              // Update local state immediately
+              set({
+                currentLocation: locationData,
+                myLocation: locationData,
+                isTracking: true,
+              });
+
+              // Notify server with filters
+              const state = get();
               socket.emit("update_location", {
                 userId: user.id,
                 lat: latitude,
                 lng: longitude,
+                filters: state.filters,
               });
             }
           );
@@ -57,13 +142,17 @@ const useLocationStore = create<LocationState>()(
 
         stopTracking: () => {
           locationSubscription?.remove();
+          set({ isTracking: false });
         },
       };
     },
     {
       name: "location-storage",
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ searchRadius: state.searchRadius }), // Only persist searchRadius
+      partialize: (state) => ({
+        searchRadius: state.searchRadius,
+        filters: state.filters,
+      }),
     }
   )
 );

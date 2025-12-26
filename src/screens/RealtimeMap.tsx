@@ -26,12 +26,7 @@ import { socket, connectSocket } from "../lib/socket";
 import useLocationStore from "../../store/locationStore";
 import useAuthStore from "../../store/authStore";
 import { useSignOut } from "../hooks/auth";
-import {
-  useNearbyUsers,
-  updateNearbyUsers,
-  UserLocation,
-} from "../hooks/location";
-import { useQueryClient } from "@tanstack/react-query";
+import { useUpdateSearchRadius } from "../hooks/location";
 
 const { width, height } = Dimensions.get("window");
 
@@ -50,7 +45,7 @@ export default function RealtimeMap() {
   const mapRef = useRef<MapView>(null);
   const { user } = useAuthStore();
   const signOutMutation = useSignOut();
-  const queryClient = useQueryClient();
+  const updateSearchRadiusMutation = useUpdateSearchRadius();
 
   const [isLive, setIsLive] = useState(socket.connected);
   const [isStealth, setIsStealth] = useState(false);
@@ -64,9 +59,8 @@ export default function RealtimeMap() {
     setSearchRadius,
     startTracking,
     stopTracking,
+    nearbyUsers,
   } = useLocationStore();
-
-  const { data: nearbyUsers = [] } = useNearbyUsers(user?.id || "");
 
   // Animations
   const scanAnim = useRef(new Animated.Value(0)).current;
@@ -124,22 +118,6 @@ export default function RealtimeMap() {
     };
   }, []);
 
-  // Handle location updates
-  useEffect(() => {
-    const handleLocationUpdate = (data: {
-      updated: any;
-      nearby: UserLocation[];
-    }) => {
-      if (user?.id) {
-        updateNearbyUsers(queryClient, user.id, data, myLocation, searchRadius);
-      }
-    };
-    socket.on("location_updated", handleLocationUpdate);
-    return () => {
-      socket.off("location_updated", handleLocationUpdate);
-    };
-  }, [queryClient, user?.id, myLocation, searchRadius]);
-
   const initTracking = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -169,12 +147,7 @@ export default function RealtimeMap() {
   const updateRadius = (radius: number) => {
     const newRadius = Math.max(100, Math.min(5000, radius));
     setSearchRadius(newRadius);
-    if (user?.id && socket.connected) {
-      socket.emit("update_search_radius", {
-        userId: user.id,
-        radius: newRadius,
-      });
-    }
+    updateSearchRadiusMutation.mutate({ radius: newRadius });
   };
 
   if (isLoggingOut) {
@@ -223,22 +196,30 @@ export default function RealtimeMap() {
         customMapStyle={DARK_MAP_STYLE}
         showsCompass={false}
       >
-        {!isStealth && myLocation.lat && (
-          <>
-            <Circle
-              center={{ latitude: myLocation.lat, longitude: myLocation.lng }}
-              radius={searchRadius}
-              fillColor="rgba(0, 240, 255, 0.05)"
-              strokeColor={THEME.CYAN}
-              strokeWidth={1.5}
-            />
-            <Marker
-              coordinate={{
-                latitude: myLocation.lat,
-                longitude: myLocation.lng,
-              }}
-              anchor={{ x: 0.5, y: 0.5 }}
-            >
+        {myLocation.lat && (
+          <Circle
+            key="search-radius"
+            center={{
+              latitude: myLocation.lat,
+              longitude: myLocation.lng,
+            }}
+            radius={!isStealth ? searchRadius : 0}
+            fillColor={!isStealth ? "rgba(0, 240, 255, 0.05)" : "transparent"}
+            strokeColor={!isStealth ? THEME.CYAN : "transparent"}
+            strokeWidth={!isStealth ? 1.5 : 0}
+          />
+        )}
+
+        {myLocation.lat && (
+          <Marker
+            key="user-location"
+            coordinate={{
+              latitude: myLocation.lat,
+              longitude: myLocation.lng,
+            }}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            {!isStealth && (
               <View style={styles.myLocationContainer}>
                 <Animated.View
                   style={[
@@ -263,29 +244,31 @@ export default function RealtimeMap() {
                   <View style={styles.coreSolid} />
                 </View>
               </View>
-            </Marker>
-          </>
+            )}
+          </Marker>
         )}
 
-        {nearbyUsers.map((u) => (
-          <Marker
-            key={u.user_id}
-            coordinate={{ latitude: u.lat, longitude: u.lng }}
-            anchor={{ x: 0.5, y: 1 }}
-          >
-            <View style={styles.userPinContainer}>
-              <LinearGradient
-                colors={[THEME.PURPLE, "#7000FF"]}
-                style={styles.pinHead}
-              >
-                <FontAwesome5 name="dog" size={12} color="#FFF" />
-              </LinearGradient>
-              <View
-                style={[styles.pinStick, { backgroundColor: THEME.PURPLE }]}
-              />
-            </View>
-          </Marker>
-        ))}
+        {nearbyUsers
+          .filter((u) => u.id !== user?.id)
+          .map((u) => (
+            <Marker
+              key={`nearby-${u.id}`}
+              coordinate={{ latitude: u.lat, longitude: u.lng }}
+              anchor={{ x: 0.5, y: 1 }}
+            >
+              <View style={styles.userPinContainer}>
+                <LinearGradient
+                  colors={[THEME.PURPLE, "#7000FF"]}
+                  style={styles.pinHead}
+                >
+                  <FontAwesome5 name="dog" size={12} color="#FFF" />
+                </LinearGradient>
+                <View
+                  style={[styles.pinStick, { backgroundColor: THEME.PURPLE }]}
+                />
+              </View>
+            </Marker>
+          ))}
       </MapView>
 
       {/* TOP GLASS HUD */}

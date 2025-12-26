@@ -1,92 +1,115 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { updateLocation, updateSearchRadius } from "../lib/socket";
+import useLocationStore from "../../store/locationStore";
+import useAuthStore from "../../store/authStore";
 
-export interface UserLocation {
-  user_id: string;
-  lat: number;
-  lng: number;
-  distance?: number;
-  lastSeen?: number;
-  isNew?: boolean;
-}
-
+// Query keys
 export const locationKeys = {
-  nearbyUsers: (userId: string) => ["nearbyUsers", userId] as const,
+  nearbyUsers: ["nearbyUsers"] as const,
 };
 
-export const useNearbyUsers = (userId: string) => {
+// Location tracking hooks
+export const useStartLocationTracking = () => {
+  return useMutation({
+    mutationFn: async () => {
+      const user = useAuthStore.getState().user;
+      if (!user) throw new Error("User not authenticated");
+
+      await useLocationStore.getState().startTracking();
+      return true;
+    },
+  });
+};
+
+export const useStopLocationTracking = () => {
+  return useMutation({
+    mutationFn: async () => {
+      useLocationStore.getState().stopTracking();
+      return true;
+    },
+  });
+};
+
+export const useUpdateLocation = () => {
+  return useMutation({
+    mutationFn: async ({
+      lat,
+      lng,
+      filters,
+    }: {
+      lat: number;
+      lng: number;
+      filters?: any;
+    }) => {
+      const user = useAuthStore.getState().user;
+      if (!user) throw new Error("User not authenticated");
+
+      updateLocation(user.id, lat, lng, filters);
+      return { lat, lng };
+    },
+  });
+};
+
+export const useUpdateSearchRadius = () => {
+  return useMutation({
+    mutationFn: async ({
+      radius,
+      filters,
+    }: {
+      radius: number;
+      filters?: any;
+    }) => {
+      const user = useAuthStore.getState().user;
+      if (!user) throw new Error("User not authenticated");
+
+      updateSearchRadius(user.id, radius, filters);
+      return { radius };
+    },
+  });
+};
+
+// Query for nearby users (this would be populated by WebSocket events)
+export const useNearbyUsers = () => {
   return useQuery({
-    queryKey: locationKeys.nearbyUsers(userId),
-    queryFn: async (): Promise<UserLocation[]> => [],
-    staleTime: Infinity,
+    queryKey: locationKeys.nearbyUsers,
+    queryFn: async () => {
+      // This data comes from WebSocket events, so we return the current store state
+      return useLocationStore.getState().nearbyUsers;
+    },
+    staleTime: 0, // Always fresh since it comes from real-time updates
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 };
 
-export const updateNearbyUsers = (
-  queryClient: ReturnType<typeof useQueryClient>,
-  userId: string,
-  data: { updated: any; nearby: UserLocation[] },
-  myLocation: { lat: number; lng: number },
-  searchRadius: number
-) => {
-  const currentNearby =
-    queryClient.getQueryData(locationKeys.nearbyUsers(userId)) || [];
+// Location filters management
+export const useUpdateLocationFilters = () => {
+  const queryClient = useQueryClient();
 
-  const calculateDistance = (
-    lat1: number,
-    lng1: number,
-    lat2: number,
-    lng2: number
-  ): number => {
-    const R = 6371e3;
-    const φ1 = (lat1 * Math.PI) / 180;
-    const φ2 = (lat2 * Math.PI) / 180;
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-    const Δλ = ((lng2 - lng1) * Math.PI) / 180;
-
-    const a =
-      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
-  };
-
-  const newNearbyMap = new Map<string, UserLocation>();
-
-  // Keep existing users if they are within radius
-  (currentNearby as UserLocation[]).forEach((u) => {
-    const distance = calculateDistance(
-      myLocation.lat,
-      myLocation.lng,
-      u.lat,
-      u.lng
-    );
-    if (distance <= searchRadius) {
-      newNearbyMap.set(u.user_id, { ...u, isNew: false });
-    }
+  return useMutation({
+    mutationFn: async (filters: any) => {
+      useLocationStore.getState().setFilters(filters);
+      return filters;
+    },
+    onSuccess: () => {
+      // Invalidate nearby users query to trigger refetch if needed
+      queryClient.invalidateQueries({ queryKey: locationKeys.nearbyUsers });
+    },
   });
+};
 
-  // Merge new data from server
-  data.nearby.forEach((u) => {
-    if (u.user_id === userId) return; // Don't add myself
+export const useUpdateSearchRadiusSetting = () => {
+  const queryClient = useQueryClient();
 
-    const distance = calculateDistance(
-      myLocation.lat,
-      myLocation.lng,
-      u.lat,
-      u.lng
-    );
-    if (distance <= searchRadius) {
-      const isNew = !newNearbyMap.has(u.user_id);
-      newNearbyMap.set(u.user_id, {
-        ...u,
-        isNew: isNew,
-      });
-    }
+  return useMutation({
+    mutationFn: async (radius: number) => {
+      useLocationStore.getState().setSearchRadius(radius);
+      return radius;
+    },
+    onSuccess: () => {
+      // Invalidate nearby users query to trigger refetch if needed
+      queryClient.invalidateQueries({ queryKey: locationKeys.nearbyUsers });
+    },
   });
-
-  queryClient.setQueryData(
-    locationKeys.nearbyUsers(userId),
-    Array.from(newNearbyMap.values())
-  );
 };

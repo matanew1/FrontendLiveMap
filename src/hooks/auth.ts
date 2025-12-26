@@ -8,18 +8,22 @@ import {
   signOut as apiSignOut,
   getUserInfo,
   refreshAccessToken,
+  getUserProfile,
+  updateUserProfile,
+  updateUserRole,
   User,
 } from "../api/auth";
 
 const BACKEND_URL =
-  process.env.EXPO_PUBLIC_BACKEND_URL || "http://10.0.0.9:3000";
+  process.env.EXPO_PUBLIC_BACKEND_URL || "http://localhost:3000";
 
 // Query keys
 export const authKeys = {
   user: ["user"] as const,
+  profile: ["profile"] as const,
 };
 
-// Mutations
+// Authentication hooks
 export const useSignIn = () => {
   const queryClient = useQueryClient();
 
@@ -31,18 +35,28 @@ export const useSignIn = () => {
       email: string;
       password: string;
     }) => {
-      const { accessToken, refreshToken } = await apiSignIn(email, password);
-
-      await AsyncStorage.setItem("accessToken", accessToken);
-      await AsyncStorage.setItem("refreshToken", refreshToken);
-
-      const userData = await getUserInfo(accessToken);
-      return { user: userData, accessToken, refreshToken };
+      return await apiSignIn(email, password);
     },
-    onSuccess: (data) => {
-      useAuthStore.getState().setUser(data.user);
+    onSuccess: async (data) => {
+      // Store tokens
+      AsyncStorage.setItem("accessToken", data.accessToken);
+      AsyncStorage.setItem("refreshToken", data.refreshToken);
+
+      // Get the user profile data instead of using the auth user
+      try {
+        const profileData = await getUserProfile(data.accessToken);
+        useAuthStore.getState().setUser(profileData);
+        queryClient.setQueryData(authKeys.user, profileData);
+        queryClient.setQueryData(authKeys.profile, profileData);
+      } catch (error) {
+        console.error("Failed to fetch profile after sign in:", error);
+        // Fallback to basic user data if profile fetch fails
+        useAuthStore.getState().setUser(data.user);
+        queryClient.setQueryData(authKeys.user, data.user);
+      }
+
+      // Connect socket
       connectSocket();
-      queryClient.setQueryData(authKeys.user, data.user);
     },
   });
 };
@@ -58,18 +72,28 @@ export const useSignUp = () => {
       email: string;
       password: string;
     }) => {
-      const { accessToken, refreshToken } = await apiSignUp(email, password);
-
-      await AsyncStorage.setItem("accessToken", accessToken);
-      await AsyncStorage.setItem("refreshToken", refreshToken);
-
-      const userData = await getUserInfo(accessToken);
-      return { user: userData, accessToken, refreshToken };
+      return await apiSignUp(email, password);
     },
-    onSuccess: (data) => {
-      useAuthStore.getState().setUser(data.user);
+    onSuccess: async (data) => {
+      // Store tokens
+      AsyncStorage.setItem("accessToken", data.accessToken);
+      AsyncStorage.setItem("refreshToken", data.refreshToken);
+
+      // Get the user profile data instead of using the auth user
+      try {
+        const profileData = await getUserProfile(data.accessToken);
+        useAuthStore.getState().setUser(profileData);
+        queryClient.setQueryData(authKeys.user, profileData);
+        queryClient.setQueryData(authKeys.profile, profileData);
+      } catch (error) {
+        console.error("Failed to fetch profile after sign up:", error);
+        // Fallback to basic user data if profile fetch fails
+        useAuthStore.getState().setUser(data.user);
+        queryClient.setQueryData(authKeys.user, data.user);
+      }
+
+      // Connect socket
       connectSocket();
-      queryClient.setQueryData(authKeys.user, data.user);
     },
   });
 };
@@ -79,44 +103,126 @@ export const useSignOut = () => {
 
   return useMutation({
     mutationFn: async () => {
-      const accessToken = await AsyncStorage.getItem("accessToken");
-      if (accessToken) {
-        await apiSignOut(accessToken);
+      const token = await AsyncStorage.getItem("accessToken");
+      if (token) {
+        await apiSignOut(token);
       }
     },
     onSuccess: () => {
+      // Clear tokens and disconnect
       AsyncStorage.removeItem("accessToken");
       AsyncStorage.removeItem("refreshToken");
+
+      // Clear store and disconnect socket
       useAuthStore.getState().setUser(null);
       disconnectSocket();
-      queryClient.removeQueries({ queryKey: authKeys.user });
+
+      // Clear query cache
+      queryClient.clear();
     },
   });
 };
 
-// Query for user
 export const useUser = () => {
   return useQuery({
     queryKey: authKeys.user,
     queryFn: async () => {
-      const accessToken = await AsyncStorage.getItem("accessToken");
-      if (!accessToken) throw new Error("No access token");
+      const token = await AsyncStorage.getItem("accessToken");
+      if (!token) throw new Error("No access token");
 
+      return await getUserInfo(token);
+    },
+    enabled: false, // Only run when explicitly called
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+// Profile hooks
+export const useProfile = () => {
+  return useQuery({
+    queryKey: authKeys.profile,
+    queryFn: async () => {
+      const token = await AsyncStorage.getItem("accessToken");
+      if (!token) throw new Error("No access token");
+
+      return await getUserProfile(token);
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+};
+
+export const useUpdateProfile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (profileData: Partial<User>) => {
+      const token = await AsyncStorage.getItem("accessToken");
+      if (!token) throw new Error("No access token");
+
+      const result = await updateUserProfile(token, profileData);
+      return result;
+    },
+    onSuccess: (updatedUser) => {
+      // Backend now returns the complete updated user data
+      useAuthStore.getState().setUser(updatedUser);
+
+      // Update query cache
+      queryClient.setQueryData(authKeys.user, updatedUser);
+      queryClient.setQueryData(authKeys.profile, updatedUser);
+    },
+    onError: (error) => {
+      console.error("❌ useUpdateProfile: onError called with:", error);
+    },
+  });
+};
+
+export const useUpdateUserRole = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      const token = await AsyncStorage.getItem("accessToken");
+      if (!token) throw new Error("No access token");
+
+      await updateUserRole(token, userId, role);
+      return { userId, role };
+    },
+    onSuccess: () => {
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: authKeys.user });
+      queryClient.invalidateQueries({ queryKey: authKeys.profile });
+    },
+  });
+};
+
+// Token refresh hook
+export const useRefreshToken = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const refreshToken = await AsyncStorage.getItem("refreshToken");
+      if (!refreshToken) throw new Error("No refresh token");
+
+      return await refreshAccessToken(refreshToken);
+    },
+    onSuccess: async (data) => {
+      // Update tokens
+      AsyncStorage.setItem("accessToken", data.accessToken);
+      AsyncStorage.setItem("refreshToken", data.refreshToken);
+
+      // Get the user profile data instead of using the auth user
       try {
-        return await getUserInfo(accessToken);
+        const profileData = await getUserProfile(data.accessToken);
+        useAuthStore.getState().setUser(profileData);
+        queryClient.setQueryData(authKeys.user, profileData);
+        queryClient.setQueryData(authKeys.profile, profileData);
       } catch (error) {
-        // Try refresh
-        const refreshToken = await AsyncStorage.getItem("refreshToken");
-        if (!refreshToken) throw error;
-
-        const newTokens = await refreshAccessToken(refreshToken);
-        await AsyncStorage.setItem("accessToken", newTokens.accessToken);
-        await AsyncStorage.setItem("refreshToken", newTokens.refreshToken);
-
-        return await getUserInfo(newTokens.accessToken);
+        console.error("Failed to fetch profile after token refresh:", error);
+        // Fallback to basic user data if profile fetch fails
+        useAuthStore.getState().setUser(data.user);
+        queryClient.setQueryData(authKeys.user, data.user);
       }
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    retry: false,
   });
 };

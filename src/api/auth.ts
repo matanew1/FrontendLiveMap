@@ -4,9 +4,34 @@ const BACKEND_URL =
 export interface User {
   id: string;
   email: string;
+  dogName?: string;
+  dogBreed?: string;
+  dogAge?: number;
+  role?: string;
 }
 
-export const signIn = async (email: string, password: string) => {
+export interface AuthResponse {
+  statusCode: number;
+  message: string;
+  data: {
+    user: User;
+    session: {
+      access_token: string;
+      refresh_token: string;
+    };
+  };
+}
+
+export interface ProfileResponse {
+  statusCode: number;
+  message: string;
+  data: User;
+}
+
+export const signIn = async (
+  email: string,
+  password: string
+): Promise<{ user: User; accessToken: string; refreshToken: string }> => {
   const response = await fetch(`${BACKEND_URL}/auth/signin`, {
     method: "POST",
     headers: {
@@ -20,27 +45,20 @@ export const signIn = async (email: string, password: string) => {
     throw new Error(errorData.message || "Sign in failed");
   }
 
-  const data = await response.json();
-  const responseData = data.data || data;
-  let accessToken: string;
-  let refreshToken: string;
+  const data: AuthResponse = await response.json();
+  const { user, session } = data.data;
 
-  if (responseData.session) {
-    accessToken = responseData.session.access_token;
-    refreshToken = responseData.session.refresh_token;
-  } else {
-    accessToken = responseData.accessToken || responseData.access_token;
-    refreshToken = responseData.refreshToken || responseData.refresh_token;
-  }
-
-  if (!accessToken || !refreshToken) {
-    throw new Error("Invalid response from server: missing tokens");
-  }
-
-  return { accessToken, refreshToken };
+  return {
+    user,
+    accessToken: session.access_token,
+    refreshToken: session.refresh_token,
+  };
 };
 
-export const signUp = async (email: string, password: string) => {
+export const signUp = async (
+  email: string,
+  password: string
+): Promise<{ user: User; accessToken: string; refreshToken: string }> => {
   const response = await fetch(`${BACKEND_URL}/auth/signup`, {
     method: "POST",
     headers: {
@@ -54,27 +72,17 @@ export const signUp = async (email: string, password: string) => {
     throw new Error(errorData.message || "Sign up failed");
   }
 
-  const data = await response.json();
-  const responseData = data.data || data;
-  let accessToken: string;
-  let refreshToken: string;
+  const data: AuthResponse = await response.json();
+  const { user, session } = data.data;
 
-  if (responseData.session) {
-    accessToken = responseData.session.access_token;
-    refreshToken = responseData.session.refresh_token;
-  } else {
-    accessToken = responseData.accessToken || responseData.access_token;
-    refreshToken = responseData.refreshToken || responseData.refresh_token;
-  }
-
-  if (!accessToken || !refreshToken) {
-    throw new Error("Invalid response from server: missing tokens");
-  }
-
-  return { accessToken, refreshToken };
+  return {
+    user,
+    accessToken: session.access_token,
+    refreshToken: session.refresh_token,
+  };
 };
 
-export const signOut = async (accessToken: string) => {
+export const signOut = async (accessToken: string): Promise<void> => {
   await fetch(`${BACKEND_URL}/auth/signout`, {
     method: "POST",
     headers: {
@@ -98,15 +106,13 @@ export const getUserInfo = async (token: string): Promise<User> => {
     throw new Error("Failed to get user info");
   }
 
-  const responseData = await response.json();
-  const userData = responseData.data.user;
-  return {
-    id: userData.id,
-    email: userData.email,
-  };
+  const data: AuthResponse = await response.json();
+  return data.data.user;
 };
 
-export const refreshAccessToken = async (refreshToken: string) => {
+export const refreshAccessToken = async (
+  refreshToken: string
+): Promise<{ accessToken: string; refreshToken: string; user: User }> => {
   const response = await fetch(`${BACKEND_URL}/auth/refresh`, {
     method: "POST",
     headers: {
@@ -119,24 +125,72 @@ export const refreshAccessToken = async (refreshToken: string) => {
     throw new Error("Failed to refresh token");
   }
 
-  const data = await response.json();
-  let accessToken: string;
-  let newRefreshToken: string;
-
-  if (data.session) {
-    accessToken = data.session.access_token;
-    newRefreshToken = data.session.refresh_token;
-  } else {
-    accessToken = data.accessToken || data.access_token;
-    newRefreshToken = data.refreshToken || data.refresh_token;
-  }
-
-  if (!accessToken || !newRefreshToken) {
-    throw new Error("Invalid refresh response from server");
-  }
+  const data: AuthResponse = await response.json();
+  const { user, session } = data.data;
 
   return {
-    accessToken,
-    refreshToken: newRefreshToken,
+    accessToken: session.access_token,
+    refreshToken: session.refresh_token,
+    user,
   };
+};
+
+export const getUserProfile = async (token: string): Promise<User> => {
+  const response = await fetch(`${BACKEND_URL}/auth/profile`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Failed to get user profile");
+  }
+
+  const data: ProfileResponse = await response.json();
+  return data.data;
+};
+
+export const updateUserProfile = async (
+  token: string,
+  profileData: Partial<User>
+): Promise<User> => {
+  const response = await fetch(`${BACKEND_URL}/auth/profile`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(profileData),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Failed to update profile");
+  }
+
+  const data: ProfileResponse = await response.json();
+  return data.data;
+};
+
+export const updateUserRole = async (
+  token: string,
+  userId: string,
+  role: string
+): Promise<void> => {
+  const response = await fetch(`${BACKEND_URL}/auth/role/${userId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ role }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Failed to update user role");
+  }
 };
