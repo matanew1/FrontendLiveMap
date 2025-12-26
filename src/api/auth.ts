@@ -1,6 +1,8 @@
 const BACKEND_URL =
   process.env.EXPO_PUBLIC_BACKEND_URL || "http://localhost:3000";
 
+import { apiClient } from "../services/api";
+
 export interface User {
   id: string;
   email: string;
@@ -82,32 +84,19 @@ export const signUp = async (
   };
 };
 
-export const signOut = async (accessToken: string): Promise<void> => {
-  await fetch(`${BACKEND_URL}/auth/signout`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-  });
-  // Ignore errors for sign out
+export const signOut = async (): Promise<void> => {
+  // The new apiClient handles authentication automatically
+  try {
+    await apiClient.post("/auth/signout", {});
+  } catch (error) {
+    // Ignore errors for sign out
+  }
 };
 
-export const getUserInfo = async (token: string): Promise<User> => {
-  const response = await fetch(`${BACKEND_URL}/auth/me`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to get user info");
-  }
-
-  const data: AuthResponse = await response.json();
-  return data.data.user;
+export const getUserInfo = async (): Promise<User> => {
+  // The new apiClient handles authentication automatically
+  const response = await apiClient.get("/auth/me");
+  return response.data;
 };
 
 export const refreshAccessToken = async (
@@ -135,62 +124,24 @@ export const refreshAccessToken = async (
   };
 };
 
-export const getUserProfile = async (token: string): Promise<User> => {
-  const response = await fetch(`${BACKEND_URL}/auth/profile`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || "Failed to get user profile");
-  }
-
-  const data: ProfileResponse = await response.json();
-  return data.data;
+export const getUserProfile = async (): Promise<User> => {
+  // The new apiClient handles authentication automatically
+  const response = await apiClient.get("/auth/profile");
+  return response.data;
 };
 
 export const updateUserProfile = async (
-  token: string,
   profileData: Partial<User>
 ): Promise<User> => {
-  const response = await fetch(`${BACKEND_URL}/auth/profile`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(profileData),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || "Failed to update profile");
-  }
-
-  const data: ProfileResponse = await response.json();
-  return data.data;
+  // The new apiClient handles authentication automatically
+  const response = await apiClient.patch("/auth/profile", profileData);
+  return response.data;
 };
 
 export const updateUserRole = async (
-  token: string,
   userId: string,
   role: string
 ): Promise<void> => {
-  const response = await fetch(`${BACKEND_URL}/auth/role/${userId}`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ role }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || "Failed to update user role");
-  }
+  // The new apiClient handles authentication automatically
+  await apiClient.patch(`/auth/role/${userId}`, { role });
 };

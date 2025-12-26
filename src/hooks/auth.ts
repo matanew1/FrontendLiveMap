@@ -7,7 +7,6 @@ import {
   signUp as apiSignUp,
   signOut as apiSignOut,
   getUserInfo,
-  refreshAccessToken,
   getUserProfile,
   updateUserProfile,
   updateUserRole,
@@ -44,7 +43,7 @@ export const useSignIn = () => {
 
       // Get the user profile data instead of using the auth user
       try {
-        const profileData = await getUserProfile(data.accessToken);
+        const profileData = await getUserProfile(); // Token handled automatically by apiClient
         useAuthStore.getState().setUser(profileData);
         queryClient.setQueryData(authKeys.user, profileData);
         queryClient.setQueryData(authKeys.profile, profileData);
@@ -81,7 +80,7 @@ export const useSignUp = () => {
 
       // Get the user profile data instead of using the auth user
       try {
-        const profileData = await getUserProfile(data.accessToken);
+        const profileData = await getUserProfile(); // Token handled automatically by apiClient
         useAuthStore.getState().setUser(profileData);
         queryClient.setQueryData(authKeys.user, profileData);
         queryClient.setQueryData(authKeys.profile, profileData);
@@ -103,10 +102,7 @@ export const useSignOut = () => {
 
   return useMutation({
     mutationFn: async () => {
-      const token = await AsyncStorage.getItem("accessToken");
-      if (token) {
-        await apiSignOut(token);
-      }
+      await apiSignOut(); // Token handled automatically by apiClient
     },
     onSuccess: () => {
       // Clear tokens and disconnect
@@ -127,10 +123,7 @@ export const useUser = () => {
   return useQuery({
     queryKey: authKeys.user,
     queryFn: async () => {
-      const token = await AsyncStorage.getItem("accessToken");
-      if (!token) throw new Error("No access token");
-
-      return await getUserInfo(token);
+      return await getUserInfo(); // Token handled automatically by apiClient
     },
     enabled: false, // Only run when explicitly called
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -142,10 +135,7 @@ export const useProfile = () => {
   return useQuery({
     queryKey: authKeys.profile,
     queryFn: async () => {
-      const token = await AsyncStorage.getItem("accessToken");
-      if (!token) throw new Error("No access token");
-
-      return await getUserProfile(token);
+      return await getUserProfile(); // Token handled automatically by apiClient
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -156,10 +146,7 @@ export const useUpdateProfile = () => {
 
   return useMutation({
     mutationFn: async (profileData: Partial<User>) => {
-      const token = await AsyncStorage.getItem("accessToken");
-      if (!token) throw new Error("No access token");
-
-      const result = await updateUserProfile(token, profileData);
+      const result = await updateUserProfile(profileData); // Token handled automatically by apiClient
       return result;
     },
     onSuccess: (updatedUser) => {
@@ -181,48 +168,13 @@ export const useUpdateUserRole = () => {
 
   return useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
-      const token = await AsyncStorage.getItem("accessToken");
-      if (!token) throw new Error("No access token");
-
-      await updateUserRole(token, userId, role);
+      await updateUserRole(userId, role); // Token handled automatically by apiClient
       return { userId, role };
     },
     onSuccess: () => {
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: authKeys.user });
       queryClient.invalidateQueries({ queryKey: authKeys.profile });
-    },
-  });
-};
-
-// Token refresh hook
-export const useRefreshToken = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async () => {
-      const refreshToken = await AsyncStorage.getItem("refreshToken");
-      if (!refreshToken) throw new Error("No refresh token");
-
-      return await refreshAccessToken(refreshToken);
-    },
-    onSuccess: async (data) => {
-      // Update tokens
-      AsyncStorage.setItem("accessToken", data.accessToken);
-      AsyncStorage.setItem("refreshToken", data.refreshToken);
-
-      // Get the user profile data instead of using the auth user
-      try {
-        const profileData = await getUserProfile(data.accessToken);
-        useAuthStore.getState().setUser(profileData);
-        queryClient.setQueryData(authKeys.user, profileData);
-        queryClient.setQueryData(authKeys.profile, profileData);
-      } catch (error) {
-        console.error("Failed to fetch profile after token refresh:", error);
-        // Fallback to basic user data if profile fetch fails
-        useAuthStore.getState().setUser(data.user);
-        queryClient.setQueryData(authKeys.user, data.user);
-      }
     },
   });
 };
