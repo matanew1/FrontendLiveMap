@@ -2,7 +2,7 @@ import io from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SERVER_URL =
-  process.env.EXPO_PUBLIC_BACKEND_URL || "http://10.0.0.5:3000";
+  process.env.EXPO_PUBLIC_BACKEND_URL || "http://10.0.0.9:3000";
 
 export const socket = io(SERVER_URL, {
   autoConnect: false,

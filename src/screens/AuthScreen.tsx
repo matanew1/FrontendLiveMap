@@ -25,6 +25,7 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics"; // Optional: npm install expo-haptics
+import { useNavigation } from "@react-navigation/native";
 import useAuthStore from "../../store/authStore";
 import { useSignIn, useSignUp } from "../hooks/auth";
 
@@ -38,6 +39,7 @@ const GLASS_SURFACE = "rgba(255, 255, 255, 0.05)";
 const GLOW_BORDER = "rgba(0, 240, 255, 0.3)";
 
 const AuthScreen = () => {
+  const navigation = useNavigation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);

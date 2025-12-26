@@ -12,7 +12,7 @@ import {
 } from "../api/auth";
 
 const BACKEND_URL =
-  process.env.EXPO_PUBLIC_BACKEND_URL || "http://localhost:3000";
+  process.env.EXPO_PUBLIC_BACKEND_URL || "http://10.0.0.9:3000";
 
 // Query keys
 export const authKeys = {
