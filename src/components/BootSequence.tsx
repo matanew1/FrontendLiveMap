@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
-import { View, StyleSheet, Animated, Text } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { COLORS } from "../constants/theme";
+import { View, StyleSheet, Animated, Text, Easing } from "react-native";
+import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { COLORS, SPACING, SHADOWS } from "../constants/theme";
 
 interface BootStep {
   label: string;
@@ -17,13 +17,14 @@ export default function BootSequence({
 }) {
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Elegant entrance
+    // Initial Entrance
     Animated.parallel([
       Animated.timing(opacityAnim, {
         toValue: 1,
-        duration: 400,
+        duration: 500,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
@@ -33,40 +34,82 @@ export default function BootSequence({
       }),
     ]).start();
 
-    // Check if all steps are completed
+    // Breathing Pulse (Standard RN Animated)
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.05,
+          duration: 1500,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Check completion
     const allCompleted = steps.every((step) => step.completed);
     if (allCompleted) {
-      // Elegant exit
-      Animated.timing(opacityAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start(onComplete);
+      const timer = setTimeout(() => {
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }).start(onComplete);
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [steps, onComplete]);
+  }, [steps]);
 
   return (
     <View style={styles.container}>
       <Animated.View
-        style={{ opacity: opacityAnim, transform: [{ scale: scaleAnim }] }}
+        style={[
+          styles.inner,
+          { opacity: opacityAnim, transform: [{ scale: scaleAnim }] },
+        ]}
       >
         <View style={styles.content}>
-          <View style={styles.iconContainer}>
-            <MaterialCommunityIcons
-              name="dog-side"
-              size={64}
-              color={COLORS.PRIMARY}
-            />
-          </View>
+          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+            <View style={styles.iconGlow}>
+              <View style={styles.iconContainer}>
+                <MaterialCommunityIcons
+                  name="dog-side"
+                  size={58}
+                  color={COLORS.PRIMARY}
+                />
+              </View>
+            </View>
+          </Animated.View>
+
+          <Text style={styles.title}>CyDog</Text>
+          <Text style={styles.subtitle}>Initializing secure link...</Text>
 
           <View style={styles.stepsContainer}>
             {steps.map((step, index) => (
-              <View key={index} style={styles.stepRow}>
-                <MaterialCommunityIcons
-                  name={step.completed ? "check-circle" : "circle-outline"}
-                  size={20}
-                  color={step.completed ? COLORS.ACCENT : COLORS.TEXT_SECONDARY}
-                />
+              <View
+                key={index}
+                style={[
+                  styles.stepRow,
+                  step.completed && styles.stepRowCompleted,
+                ]}
+              >
+                <View style={styles.iconBox}>
+                  {step.completed ? (
+                    <MaterialCommunityIcons
+                      name="check-decagram"
+                      size={20}
+                      color={COLORS.ACCENT}
+                    />
+                  ) : (
+                    <View style={styles.dotLoader} />
+                  )}
+                </View>
                 <Text
                   style={[
                     styles.stepText,
@@ -75,8 +118,31 @@ export default function BootSequence({
                 >
                   {step.label}
                 </Text>
+                {step.completed && (
+                  <Feather name="check" size={14} color={COLORS.ACCENT} />
+                )}
               </View>
             ))}
+          </View>
+
+          <View style={styles.footer}>
+            <View style={styles.progressBarBg}>
+              <View
+                style={[
+                  styles.progressFill,
+                  {
+                    width: `${
+                      (steps.filter((s) => s.completed).length / steps.length) *
+                      100
+                    }%`,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.footerText}>
+              SYSTEM STATUS:{" "}
+              {steps.every((s) => s.completed) ? "OPERATIONAL" : "BOOTING..."}
+            </Text>
           </View>
         </View>
       </Animated.View>
@@ -91,35 +157,80 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  content: {
-    alignItems: "center",
+  inner: { width: "100%", alignItems: "center" },
+  content: { alignItems: "center", width: "85%" },
+  iconGlow: {
+    padding: 2,
+    borderRadius: 50,
+    backgroundColor: "rgba(79, 70, 229, 0.1)",
+    marginBottom: SPACING.l,
   },
   iconContainer: {
-    padding: 20,
-    backgroundColor: COLORS.BG_CARD,
-    borderRadius: 24,
-    shadowColor: COLORS.PRIMARY,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
-    marginBottom: 30,
+    width: 110,
+    height: 110,
+    backgroundColor: "#FFF",
+    borderRadius: 55,
+    alignItems: "center",
+    justifyContent: "center",
+    ...SHADOWS.md,
   },
-  stepsContainer: {
-    width: 250,
+  title: {
+    fontSize: 34,
+    fontWeight: "900",
+    color: COLORS.TEXT_PRIMARY,
+    letterSpacing: -1,
   },
+  subtitle: {
+    fontSize: 14,
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.xxl,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  stepsContainer: { width: "100%", gap: 10 },
   stepRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    padding: SPACING.m,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.03)",
+  },
+  stepRowCompleted: {
+    backgroundColor: "#FFF",
+    borderColor: "rgba(0,0,0,0.05)",
+    ...SHADOWS.sm,
+  },
+  iconBox: { width: 24, marginRight: SPACING.m, alignItems: "center" },
+  dotLoader: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.BG_INPUT,
   },
   stepText: {
-    fontSize: 16,
-    color: COLORS.TEXT_SECONDARY,
-    marginLeft: 12,
+    flex: 1,
+    fontSize: 15,
+    color: COLORS.TEXT_TERTIARY,
     fontWeight: "500",
   },
-  stepTextCompleted: {
-    color: COLORS.ACCENT,
+  stepTextCompleted: { color: COLORS.TEXT_PRIMARY, fontWeight: "700" },
+  footer: { marginTop: SPACING.xxl, width: "100%", alignItems: "center" },
+  progressBarBg: {
+    width: "60%",
+    height: 4,
+    backgroundColor: COLORS.BG_INPUT,
+    borderRadius: 2,
+    overflow: "hidden",
+    marginBottom: SPACING.m,
+  },
+  progressFill: { height: "100%", backgroundColor: COLORS.PRIMARY },
+  footerText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: COLORS.TEXT_TERTIARY,
+    letterSpacing: 2,
   },
 });

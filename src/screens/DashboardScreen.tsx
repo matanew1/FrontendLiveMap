@@ -7,40 +7,49 @@ import {
   TouchableOpacity,
   RefreshControl,
   StatusBar,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { COLORS, SPACING, SHADOWS } from "../constants/theme";
 import { Skeleton } from "../components/Skeleton";
+import useAuthStore from "../../store/authStore";
 
-// Mock Data
+const { width: screenWidth } = Dimensions.get("window");
+const isSmallScreen = screenWidth < 375;
+
+// Mock Data including breed and age for compatibility logic
 const MOCK_POSTS = [
   {
     id: "1",
-    user: "Rex the Husky",
+    user: "Rex",
+    breed: "Husky",
+    age: 3,
     location: "Central Park",
-    content:
-      "Just finished a 5k run with my human. The squirrels are fast today!",
+    content: "Squirrel hunting season is officially open! 🐿️",
     time: "2h ago",
     likes: 128,
   },
   {
     id: "2",
-    user: "Luna Retriever",
+    user: "Luna",
+    breed: "Retriever",
+    age: 2,
     location: "Downtown",
-    content: "Checking in at the new pet-friendly cafe.",
+    content: "Found a new pet-friendly latte spot!",
     time: "4h ago",
     likes: 84,
   },
 ];
 
 export default function DashboardScreen() {
+  const { user } = useAuthStore();
   const [refreshing, setRefreshing] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     // Simulate initial data fetch
-    setTimeout(() => setLoading(false), 2000);
+    setTimeout(() => setLoading(false), 1500);
   }, []);
 
   const onRefresh = () => {
@@ -48,76 +57,125 @@ export default function DashboardScreen() {
     setTimeout(() => setRefreshing(false), 1500);
   };
 
-  const renderSkeleton = () => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Skeleton width={40} height={40} style={{ borderRadius: 20 }} />
-        <View style={{ marginLeft: 12 }}>
-          <Skeleton width={120} height={16} style={{ marginBottom: 6 }} />
-          <Skeleton width={80} height={12} />
+  const renderPost = ({ item }: any) => {
+    // Logic: Compare breeds or age (within 1 year) for compatibility badge
+    const isMatch =
+      user?.dogBreed === item.breed ||
+      Math.abs((user?.dogAge || 0) - item.age) <= 1;
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.avatarGlow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{item.user[0]}</Text>
+            </View>
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={styles.nameRow}>
+              <Text style={styles.userName}>{item.user}</Text>
+              {isMatch && (
+                <View style={styles.matchBadge}>
+                  <MaterialCommunityIcons
+                    name="paw"
+                    size={12}
+                    color={COLORS.PRIMARY}
+                  />
+                  <Text style={styles.matchText}>Great Match</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.metaRow}>
+              <Feather name="map-pin" size={12} color={COLORS.TEXT_TERTIARY} />
+              <Text style={styles.metaText}>
+                {item.location} • {item.time}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.moreBtn}>
+            <Feather
+              name="more-vertical"
+              size={20}
+              color={COLORS.TEXT_TERTIARY}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.postContent}>{item.content}</Text>
+
+        <View style={styles.mediaPlaceholder}>
+          <View style={styles.mediaContent}>
+            <Feather name="image" size={32} color={COLORS.TEXT_TERTIARY} />
+            <Text style={styles.mediaText}>Photo</Text>
+          </View>
+        </View>
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={styles.actionBtn}>
+            <Feather name="heart" size={18} color={COLORS.DANGER} />
+            <Text style={styles.actionText}>{item.likes}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn}>
+            <Feather
+              name="message-circle"
+              size={18}
+              color={COLORS.TEXT_SECONDARY}
+            />
+            <Text style={styles.actionText}>Reply</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn}>
+            <Feather name="share" size={18} color={COLORS.TEXT_SECONDARY} />
+            <Text style={styles.actionText}>Share</Text>
+          </TouchableOpacity>
         </View>
       </View>
-      <Skeleton width="100%" height={60} style={{ marginVertical: 12 }} />
-      <Skeleton width="100%" height={200} style={{ borderRadius: 8 }} />
-    </View>
-  );
-
-  const renderPost = ({ item }: any) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{item.user[0]}</Text>
-        </View>
-        <View>
-          <Text style={styles.userName}>{item.user}</Text>
-          <Text style={styles.metaText}>
-            {item.location} • {item.time}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={styles.postContent}>{item.content}</Text>
-
-      {/* Placeholder Image Area */}
-      <View style={styles.mediaPlaceholder}>
-        <Feather name="image" size={32} color={COLORS.TEXT_TERTIARY} />
-      </View>
-
-      <View style={styles.actionRow}>
-        <TouchableOpacity style={styles.actionBtn}>
-          <Feather name="heart" size={18} color={COLORS.TEXT_SECONDARY} />
-          <Text style={styles.actionText}>{item.likes}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn}>
-          <Feather
-            name="message-square"
-            size={18}
-            color={COLORS.TEXT_SECONDARY}
-          />
-          <Text style={styles.actionText}>Comment</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn}>
-          <Feather name="share-2" size={18} color={COLORS.TEXT_SECONDARY} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.BG_MAIN} />
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Activity Feed</Text>
-          <TouchableOpacity style={styles.iconBtn}>
-            <Feather name="bell" size={24} color={COLORS.TEXT_PRIMARY} />
-          </TouchableOpacity>
+        {/* RESPONSIVE GLASSMOPRHISM HEADER */}
+        <View style={styles.glassHeader}>
+          <View style={styles.headerContent}>
+            <View style={styles.headerTopRow}>
+              <View style={styles.titleContainer}>
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                  Activity
+                </Text>
+              </View>
+
+              <View style={styles.headerActions}>
+                {/* Gamified Walkies Streak */}
+                <View style={styles.streakBadge}>
+                  <MaterialCommunityIcons
+                    name="fire"
+                    size={18}
+                    color="#F59E0B"
+                  />
+                  <Text style={styles.streakText}>5</Text>
+                </View>
+                <TouchableOpacity style={styles.iconBtn}>
+                  <Feather name="bell" size={22} color={COLORS.TEXT_PRIMARY} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <Text style={styles.headerSubtitle} numberOfLines={2}>
+              Stay connected with your dog community
+            </Text>
+          </View>
         </View>
 
         {loading ? (
           <View style={{ padding: SPACING.m }}>
-            {renderSkeleton()}
-            {renderSkeleton()}
+            <Skeleton
+              width="100%"
+              height={150}
+              style={{ marginBottom: 20, borderRadius: 24 }}
+            />
+            <Skeleton width="100%" height={150} style={{ borderRadius: 24 }} />
           </View>
         ) : (
           <FlatList
@@ -143,76 +201,161 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.BG_MAIN },
-  header: {
+
+  // Header Styles
+  glassHeader: {
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.3)",
+    ...SHADOWS.md,
+    zIndex: 10,
+  },
+  headerContent: {
+    paddingHorizontal: SPACING.l,
+    paddingVertical: SPACING.m,
+  },
+  headerTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: SPACING.l,
-    paddingVertical: SPACING.m,
-    backgroundColor: COLORS.BG_MAIN,
+  },
+  titleContainer: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: isSmallScreen ? 22 : 28,
+    fontWeight: "800",
+    color: COLORS.PRIMARY,
+    letterSpacing: -0.8,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerSubtitle: {
+    fontSize: isSmallScreen ? 13 : 14,
+    color: COLORS.TEXT_SECONDARY,
+    marginTop: 4,
+    fontWeight: "500",
+    maxWidth: "90%",
+  },
+  streakBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 10,
+    ...SHADOWS.sm,
+  },
+  streakText: {
+    marginLeft: 4,
     fontWeight: "bold",
     color: COLORS.TEXT_PRIMARY,
+    fontSize: 14,
   },
-  iconBtn: { padding: 8 },
-  listContent: { padding: SPACING.m, paddingBottom: 100 },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFF",
+    alignItems: "center",
+    justifyContent: "center",
+    ...SHADOWS.sm,
+  },
+
+  // Card & List Styles
+  listContent: {
+    paddingBottom: 100,
+    paddingTop: SPACING.m,
+  },
   card: {
     backgroundColor: COLORS.BG_CARD,
-    borderRadius: 12,
-    padding: SPACING.m,
-    marginBottom: SPACING.m,
-    ...SHADOWS.sm,
+    borderRadius: 24,
+    padding: SPACING.l,
+    marginBottom: SPACING.l,
+    marginHorizontal: SPACING.m,
+    ...SHADOWS.md,
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: SPACING.s,
+    marginBottom: SPACING.m,
+  },
+  avatarGlow: {
+    padding: 2,
+    borderRadius: 22,
+    backgroundColor: "#EEF2FF",
+    marginRight: SPACING.s,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: COLORS.PRIMARY,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: SPACING.s,
   },
-  avatarText: { color: "#FFF", fontWeight: "bold" },
-  userName: { fontWeight: "700", color: COLORS.TEXT_PRIMARY, fontSize: 15 },
-  metaText: { color: COLORS.TEXT_SECONDARY, fontSize: 12, marginTop: 2 },
+  avatarText: { color: "#FFF", fontWeight: "bold", fontSize: 18 },
+  nameRow: { flexDirection: "row", alignItems: "center" },
+  userName: { fontWeight: "700", color: COLORS.TEXT_PRIMARY, fontSize: 16 },
+  matchBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EEF2FF",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  matchText: {
+    fontSize: 11,
+    color: COLORS.PRIMARY,
+    fontWeight: "700",
+    marginLeft: 4,
+  },
+  metaRow: { flexDirection: "row", alignItems: "center", marginTop: 2 },
+  metaText: { color: COLORS.TEXT_SECONDARY, fontSize: 12, marginLeft: 4 },
+  moreBtn: { padding: SPACING.xs },
   postContent: {
     fontSize: 15,
     color: COLORS.TEXT_PRIMARY,
     lineHeight: 22,
-    marginBottom: SPACING.m,
+    marginBottom: SPACING.l,
   },
   mediaPlaceholder: {
     width: "100%",
-    height: 200,
+    height: 180,
     backgroundColor: COLORS.BG_INPUT,
-    borderRadius: 8,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: SPACING.m,
+    marginBottom: SPACING.l,
+  },
+  mediaContent: { alignItems: "center" },
+  mediaText: {
+    color: COLORS.TEXT_TERTIARY,
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: SPACING.xs,
   },
   actionRow: {
     flexDirection: "row",
-    paddingTop: SPACING.s,
+    paddingTop: SPACING.m,
     borderTopWidth: 1,
     borderTopColor: COLORS.BG_INPUT,
   },
   actionBtn: {
     flexDirection: "row",
     alignItems: "center",
-    marginRight: SPACING.l,
+    marginRight: SPACING.xl,
   },
   actionText: {
     marginLeft: 6,
     color: COLORS.TEXT_SECONDARY,
+    fontWeight: "600",
     fontSize: 13,
-    fontWeight: "500",
   },
   fab: {
     position: "absolute",

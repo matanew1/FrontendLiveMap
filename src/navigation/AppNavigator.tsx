@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
+import { View, StyleSheet, Platform } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -12,46 +13,55 @@ import DashboardScreen from "../screens/DashboardScreen";
 import BootSequence from "../components/BootSequence";
 import { connectSocket } from "../lib/socket";
 import { useUser } from "../hooks/auth";
-import { COLORS, SHADOWS } from "../constants/theme";
+import { COLORS, SHADOWS, SPACING } from "../constants/theme";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Tab Navigator for authenticated screens
 const TabNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarHideOnKeyboard: true,
         tabBarStyle: {
-          backgroundColor: COLORS.BG_CARD,
-          borderTopWidth: 1,
-          borderTopColor: COLORS.BORDER,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
-          ...SHADOWS.md, // Subtle lift
-          elevation: 5, // Android shadow
+          backgroundColor: "rgba(255, 255, 255, 0.98)",
+          borderTopWidth: 0,
+          height: Platform.OS === "ios" ? 88 : 70,
+          paddingBottom: Platform.OS === "ios" ? 30 : 12,
+          paddingTop: 12,
+          marginHorizontal: SPACING.m,
+          marginBottom: 20,
+          borderRadius: 32,
+          position: "absolute",
+          borderWidth: 1,
+          borderColor: "rgba(0,0,0,0.04)",
+          ...SHADOWS.lg,
         },
         tabBarActiveTintColor: COLORS.PRIMARY,
-        tabBarInactiveTintColor: COLORS.TEXT_SECONDARY,
+        tabBarInactiveTintColor: COLORS.TEXT_TERTIARY,
         tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: "600",
-          marginBottom: 4,
+          fontSize: 11,
+          fontWeight: "700",
+          marginBottom: 0,
         },
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           let iconName: keyof typeof Ionicons.glyphMap = "home";
 
-          if (route.name === "Feed") {
-            iconName = focused ? "newspaper" : "newspaper-outline";
-          } else if (route.name === "Map") {
+          if (route.name === "Feed")
+            iconName = focused ? "layers" : "layers-outline";
+          else if (route.name === "Map")
             iconName = focused ? "map" : "map-outline";
-          } else if (route.name === "Profile") {
+          else if (route.name === "Profile")
             iconName = focused ? "person" : "person-outline";
-          }
 
-          return <Ionicons name={iconName} size={24} color={color} />;
+          return (
+            <View
+              style={[styles.tabIconContainer, focused && styles.tabIconActive]}
+            >
+              <Ionicons name={iconName} size={22} color={color} />
+            </View>
+          );
         },
       })}
     >
@@ -79,11 +89,11 @@ const AppNavigator = () => {
   const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
   const [loadingSteps, setLoadingSteps] = useState([
-    { label: "Initializing app", completed: false },
-    { label: "Checking authentication", completed: false },
-    { label: "Loading user profile", completed: false },
-    { label: "Connecting services", completed: false },
-    { label: "Ready", completed: false },
+    { label: "Initializing CyDog", completed: false },
+    { label: "Securing connection", completed: false },
+    { label: "Fetching profile", completed: false },
+    { label: "Connecting radar", completed: false },
+    { label: "Welcome back", completed: false },
   ]);
   const { data: queryUser, refetch } = useUser();
 
@@ -95,53 +105,36 @@ const AppNavigator = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      // Step 0: Initializing app
       updateStep(0, true);
-      await new Promise((resolve) => setTimeout(resolve, 600)); // Small delay for visual
+      await new Promise((r) => setTimeout(r, 400));
 
-      // Step 1: Checking authentication
       updateStep(1, true);
-      await new Promise((resolve) => setTimeout(resolve, 700)); // Delay before checking token
       const token = await AsyncStorage.getItem("accessToken");
 
       if (token && !user) {
-        // Step 2: Loading user profile
         updateStep(2, true);
-        await new Promise((resolve) => setTimeout(resolve, 800)); // Delay before fetching
         try {
           await refetch();
         } catch (error) {
-          console.log("Token invalid, clearing auth");
-          await AsyncStorage.removeItem("accessToken");
-          await AsyncStorage.removeItem("refreshToken");
+          await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
           useAuthStore.getState().setUser(null);
         }
       } else {
-        // If no token or user already loaded, mark profile as completed
         updateStep(2, true);
-        await new Promise((resolve) => setTimeout(resolve, 500)); // Delay for consistency
       }
 
-      // Step 3: Connecting services
       updateStep(3, true);
-      await new Promise((resolve) => setTimeout(resolve, 600)); // Delay for service connection
-      // Socket connection will happen when user is synced
-
-      // Step 4: Ready
       updateStep(4, true);
-      await new Promise((resolve) => setTimeout(resolve, 800)); // Final delay
-
+      await new Promise((r) => setTimeout(r, 600));
       setIsLoading(false);
     };
 
     checkAuth();
   }, []);
 
-  // Sync React Query user state with Zustand store
   React.useEffect(() => {
     if (queryUser && !user) {
       useAuthStore.getState().setUser(queryUser);
-      // Connect socket when user is loaded
       connectSocket();
     }
   }, [queryUser, user]);
@@ -156,12 +149,7 @@ const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer
-      ref={navigationRef}
-      onReady={() => {
-        console.log("AppNavigator: Navigation container is ready");
-      }}
-    >
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user?.id ? (
           <Stack.Screen name="MainTabs" component={TabNavigator} />
@@ -172,5 +160,18 @@ const AppNavigator = () => {
     </NavigationContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  tabIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabIconActive: {
+    backgroundColor: COLORS.PRIMARY_LIGHT,
+  },
+});
 
 export default AppNavigator;

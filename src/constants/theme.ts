@@ -3,28 +3,30 @@ import { Dimensions, Platform } from "react-native";
 const { width, height } = Dimensions.get("window");
 
 export const COLORS = {
-  // Brand Identity
-  PRIMARY: "#4F46E5", // Indigo 600 - Trustworthy, modern tech
-  PRIMARY_DARK: "#4338CA",
-  ACCENT: "#10B981", // Emerald 500 - Success actions
-  DANGER: "#EF4444", // Red 500 - Destructive actions
+  // Brand Identity - Refined Indigo & Emerald
+  PRIMARY: "#6366F1",
+  PRIMARY_LIGHT: "#EEF2FF",
+  ACCENT: "#10B981",
+  DANGER: "#F43F5E",
+  WARNING: "#F59E0B", // For the "Fire" streak
 
-  // Backgrounds
-  BG_MAIN: "#F9FAFB", // Cool Gray 50 - Easier on eyes than pure white
+  // Backgrounds - Slate based for premium feel
+  BG_MAIN: "#F8FAFC",
   BG_CARD: "#FFFFFF",
-  BG_MODAL: "#FFFFFF",
-  BG_INPUT: "#F3F4F6", // Cool Gray 100
+  BG_INPUT: "#F1F5F9",
+  GLASS: "rgba(255, 255, 255, 0.85)",
 
   // Typography
-  TEXT_PRIMARY: "#111827", // Cool Gray 900 - High legibility
-  TEXT_SECONDARY: "#6B7280", // Cool Gray 500 - Meta data
-  TEXT_TERTIARY: "#9CA3AF", // Cool Gray 400 - Placeholders
+  TEXT_PRIMARY: "#0F172A",
+  TEXT_SECONDARY: "#64748B",
+  TEXT_TERTIARY: "#94A3B8",
 
   // UI Elements
-  BORDER: "#E5E7EB", // Cool Gray 200
-  ICON: "#4B5563", // Cool Gray 600
-  OVERLAY: "rgba(0, 0, 0, 0.4)",
+  BORDER: "#E2E8F0",
+  ICON: "#475569",
+  OVERLAY: "rgba(15, 23, 42, 0.4)",
 };
+
 export const SPACING = {
   xs: 4,
   s: 8,
@@ -34,37 +36,32 @@ export const SPACING = {
   xxl: 48,
 };
 
-export const LAYOUT = {
-  window: { width, height },
-  isSmallDevice: width < 375,
-};
-
 export const SHADOWS = {
-  // Soft, diffused shadows instead of neon glows
+  // Multi-layered soft shadows
   sm: {
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
     elevation: 2,
   },
   md: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowColor: "#6366F1",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 5,
   },
   lg: {
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
     elevation: 10,
   },
 };
+
 export const FONTS = {
-  // Use system fonts for native feel
   regular: Platform.OS === "ios" ? "System" : "Roboto",
   bold: Platform.OS === "ios" ? "System" : "Roboto",
 };
