@@ -93,23 +93,47 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.BG_MAIN} />
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+        {/* RESPONSIVE GLASSMORPHISM HEADER */}
+        <View style={styles.glassHeader}>
+          <View style={styles.headerContent}>
+            <View style={styles.headerTopRow}>
+              <View style={styles.titleContainer}>
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                  Profile
+                </Text>
+              </View>
+
+              <View style={styles.headerActions}>
+                {/* Gamified Walkies Streak */}
+                <View style={styles.streakBadge}>
+                  <MaterialCommunityIcons
+                    name="fire"
+                    size={18}
+                    color="#F59E0B"
+                  />
+                  <Text style={styles.streakText}>5</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.signOutIconButton}
+                  onPress={() => signOutMutation.mutate()}
+                >
+                  <Feather name="log-out" size={20} color={COLORS.DANGER} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <Text style={styles.headerSubtitle} numberOfLines={2}>
+              Manage your dog's profile
+            </Text>
+          </View>
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header Action Row */}
-          <View style={styles.headerActions}>
-            <Text style={styles.headerTitle}>Profile</Text>
-            <TouchableOpacity
-              style={styles.signOutIconButton}
-              onPress={() => signOutMutation.mutate()}
-            >
-              <Feather name="log-out" size={20} color={COLORS.DANGER} />
-            </TouchableOpacity>
-          </View>
-
           {/* Enhanced Avatar Section */}
           <View style={styles.avatarSection}>
             <View style={styles.avatarGlow}>
@@ -266,21 +290,59 @@ const SettingItem = ({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.BG_MAIN },
-  content: { paddingBottom: SPACING.xxl },
 
-  // Header Actions
-  headerActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  // Header Styles
+  glassHeader: {
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.3)",
+    ...SHADOWS.md,
+    zIndex: 10,
+  },
+  headerContent: {
     paddingHorizontal: SPACING.l,
     paddingVertical: SPACING.m,
   },
+  headerTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  titleContainer: {
+    flex: 1,
+  },
   headerTitle: {
-    fontSize: 24,
+    fontSize: isSmallScreen ? 22 : 28,
     fontWeight: "800",
-    color: COLORS.TEXT_PRIMARY,
-    letterSpacing: -0.5,
+    color: COLORS.PRIMARY,
+    letterSpacing: -0.8,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerSubtitle: {
+    fontSize: isSmallScreen ? 13 : 14,
+    color: COLORS.TEXT_SECONDARY,
+    marginTop: 4,
+    fontWeight: "500",
+    maxWidth: "90%",
+  },
+  streakBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 10,
+    ...SHADOWS.sm,
+  },
+  streakText: {
+    fontSize: 14,
+    color: "#F59E0B",
+    fontWeight: "700",
+    marginLeft: 4,
   },
   signOutIconButton: {
     width: 40,
@@ -290,6 +352,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
+  content: { paddingBottom: SPACING.xxl },
 
   // Avatar Section
   avatarSection: {
