@@ -92,8 +92,7 @@ export const uploadAvatar = async (
   file: any
 ): Promise<{ avatarUrl: string }> => {
   const token = await AsyncStorage.getItem("accessToken");
-  // Always use POST /auth/upload-avatar for now since PATCH /auth/avatar is not implemented
-  const endpoint = "/auth/upload-avatar";
+  const endpoint = "/upload/avatar";
   const method = "POST";
   const formData = new FormData();
   formData.append("file", file);

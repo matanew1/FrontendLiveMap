@@ -6,10 +6,6 @@ export interface User {
   dogAge?: number;
   avatarUrl?: string;
   role?: string;
-  lastLocation?: {
-    lat: number;
-    lng: number;
-  } | null;
 }
 
 export interface AuthResponse {
