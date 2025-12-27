@@ -29,8 +29,8 @@ interface LocationState {
   setIsUpdatingFromSocket: (updating: boolean) => void;
   clearLocationData: () => void;
 
-  // Legacy methods for compatibility
-  myLocation: LocationData;
+  // Legacy property for backward compatibility - now a getter
+  readonly myLocation: LocationData;
   startTracking: () => Promise<void>;
   stopTracking: () => void;
 }
@@ -48,13 +48,16 @@ const useLocationStore = create<LocationState>()(
         isTracking: false,
         isUpdatingFromSocket: false,
 
-        // Legacy property for backward compatibility
-        myLocation: { lat: 32.0853, lng: 34.7818 },
+        // Legacy property for backward compatibility - use user's lastLocation or default
+        get myLocation() {
+          const user = useAuthStore.getState().user;
+          return user?.lastLocation || { lat: 32.0853, lng: 34.7818 };
+        },
 
         setCurrentLocation: (location) =>
           set({
             currentLocation: location,
-            myLocation: location, // Keep legacy property in sync
+            // myLocation is now a getter, so we don't need to set it
           }),
 
         setNearbyUsers: (users) => set({ nearbyUsers: users }),
@@ -88,7 +91,7 @@ const useLocationStore = create<LocationState>()(
             currentLocation: null,
             nearbyUsers: [],
             isTracking: false,
-            myLocation: { lat: 32.0853, lng: 34.7818 }, // Reset to default
+            // myLocation is now a getter that uses user's lastLocation
           }),
 
         startTracking: async () => {
@@ -113,7 +116,6 @@ const useLocationStore = create<LocationState>()(
               // Update local state immediately
               set({
                 currentLocation: locationData,
-                myLocation: locationData,
                 isTracking: true,
               });
 
