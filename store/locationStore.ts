@@ -60,7 +60,7 @@ const useLocationStore = create<LocationState>()(
       return {
         currentLocation: null,
         nearbyUsers: [],
-        searchRadius: 1000, // Default 1km
+        searchRadius: 100, // Default 100m
         filters: {},
         isTracking: false,
         isUpdatingFromSocket: false,
