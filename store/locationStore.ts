@@ -11,6 +11,7 @@ import {
 
 interface LocationState {
   currentLocation: LocationData | null;
+  lastLocation: LocationData | null;
   nearbyUsers: NearbyUser[];
   searchRadius: number;
   filters: LocationFilters;
@@ -42,6 +43,7 @@ const useLocationStore = create<LocationState>()(
 
       return {
         currentLocation: null,
+        lastLocation: null,
         nearbyUsers: [],
         searchRadius: 100, // Default 100m
         filters: {},
@@ -52,10 +54,11 @@ const useLocationStore = create<LocationState>()(
         myLocation: { lat: 32.0853, lng: 34.7818 },
 
         setCurrentLocation: (location) =>
-          set({
+          set((state) => ({
+            lastLocation: state.currentLocation,
             currentLocation: location,
             myLocation: location, // Keep legacy property in sync
-          }),
+          })),
 
         setNearbyUsers: (users) => set({ nearbyUsers: users }),
 
@@ -86,6 +89,7 @@ const useLocationStore = create<LocationState>()(
         clearLocationData: () =>
           set({
             currentLocation: null,
+            lastLocation: null,
             nearbyUsers: [],
             isTracking: false,
             myLocation: { lat: 32.0853, lng: 34.7818 }, // Reset to default

@@ -167,9 +167,14 @@ export const useUploadAvatar = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (file: any) => {
-      // Always use the same upload endpoint for both new uploads and updates
-      return await uploadAvatar(file);
+    mutationFn: async ({
+      file,
+      isUpdate = false,
+    }: {
+      file: any;
+      isUpdate?: boolean;
+    }) => {
+      return await uploadAvatar(file, isUpdate);
     },
     onSuccess: (data) => {
       // Update the user in store with the new avatarUrl

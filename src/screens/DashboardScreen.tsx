@@ -15,54 +15,33 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { COLORS, SPACING, SHADOWS } from "../constants/theme";
 import { Skeleton } from "../components/Skeleton";
 import useAuthStore from "../../store/authStore";
+import { usePosts, useToggleLikePost } from "../hooks/posts";
+import { Post } from "../types/posts";
 
 const { width: screenWidth } = Dimensions.get("window");
 const isSmallScreen = screenWidth < 375;
 
-// Mock Data including breed and age for compatibility logic
-const MOCK_POSTS = [
-  {
-    id: "1",
-    user: "Rex",
-    breed: "Husky",
-    age: 3,
-    location: "Central Park",
-    content: "Squirrel hunting season is officially open! 🐿️",
-    time: "2h ago",
-    likes: 128,
-    imageUrl:
-      "https://images.unsplash.com/photo-1605568427561-40dd23c2acea?w=400&h=300&fit=crop",
-  },
-  {
-    id: "2",
-    user: "Luna",
-    breed: "Retriever",
-    age: 2,
-    location: "Downtown",
-    content: "Found a new pet-friendly latte spot!",
-    time: "4h ago",
-    likes: 84,
-    imageUrl:
-      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop",
-  },
-];
-
 export default function DashboardScreen() {
   const { user } = useAuthStore();
+  const { data: posts, isLoading, refetch } = usePosts();
+  const toggleLikeMutation = useToggleLikePost();
   const [refreshing, setRefreshing] = React.useState(false);
-  const [loading, setLoading] = React.useState(true);
 
-  React.useEffect(() => {
-    // Simulate initial data fetch
-    setTimeout(() => setLoading(false), 1500);
-  }, []);
-
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
+    await refetch();
+    setRefreshing(false);
   };
 
-  const renderPost = ({ item }: any) => {
+  const handleLikePress = async (postId: string) => {
+    try {
+      await toggleLikeMutation.mutateAsync(postId);
+    } catch (error) {
+      console.error("Failed to toggle like:", error);
+    }
+  };
+
+  const renderPost = ({ item }: { item: Post }) => {
     // Logic: Compare breeds or age (within 1 year) for compatibility badge
     const isMatch =
       user?.dogBreed === item.breed ||
@@ -119,7 +98,10 @@ export default function DashboardScreen() {
         )}
 
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.actionBtn}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => handleLikePress(item.id)}
+          >
             <Feather name="heart" size={18} color={COLORS.DANGER} />
             <Text style={styles.actionText}>{item.likes}</Text>
           </TouchableOpacity>
@@ -167,7 +149,7 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {loading ? (
+        {isLoading ? (
           <View style={{ padding: SPACING.m }}>
             <Skeleton
               width="100%"
@@ -178,7 +160,7 @@ export default function DashboardScreen() {
           </View>
         ) : (
           <FlatList
-            data={MOCK_POSTS}
+            data={posts || []}
             renderItem={renderPost}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}

@@ -89,11 +89,12 @@ export const updateUserProfile = async (
 };
 
 export const uploadAvatar = async (
-  file: any
+  file: any,
+  isUpdate: boolean = false
 ): Promise<{ avatarUrl: string }> => {
   const token = await AsyncStorage.getItem("accessToken");
   const endpoint = "/upload/avatar";
-  const method = "POST";
+  const method = isUpdate ? "PATCH" : "POST";
   const formData = new FormData();
   formData.append("file", file);
 

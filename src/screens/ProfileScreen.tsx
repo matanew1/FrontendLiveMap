@@ -115,8 +115,15 @@ export default function ProfileScreen() {
       } as any;
 
       try {
-        await uploadAvatarMutation.mutateAsync(file);
-        Alert.alert("Success", "Avatar updated successfully!");
+        // Determine if this is an update or first upload based on existing avatar
+        const isUpdate = !!currentProfile?.avatarUrl;
+        await uploadAvatarMutation.mutateAsync({ file, isUpdate });
+        Alert.alert(
+          "Success",
+          isUpdate
+            ? "Avatar updated successfully!"
+            : "Avatar uploaded successfully!"
+        );
       } catch (error: any) {
         Alert.alert("Error", error.message);
       }

@@ -81,8 +81,14 @@ socket.on("location_updated", (data: SocketLocationUpdate) => {
     useLocationStore.getState().setIsUpdatingFromSocket(true);
     useLocationStore.getState().setNearbyUsers(transformedNearby);
 
-    // Only update the specific user's location if it's not the current user
-    if (data.updated && data.updated.user_id !== currentUserId) {
+    // Update the current user's location if it's their own update
+    if (data.updated && data.updated.user_id === currentUserId) {
+      useLocationStore.getState().setCurrentLocation({
+        lat: data.updated.lat,
+        lng: data.updated.lng,
+      });
+    } else if (data.updated) {
+      // Only update the specific user's location if it's not the current user
       useLocationStore.getState().updateNearbyUser(data.updated.user_id, {
         lat: data.updated.lat,
         lng: data.updated.lng,
