@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
   Text,
   TouchableOpacity,
   StatusBar,
+  Dimensions,
   Platform,
   Image,
   Animated,
@@ -20,29 +21,53 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Feather, FontAwesome5, Ionicons } from "@expo/vector-icons";
-import { COLORS, SHADOWS, SPACING } from "../constants/theme";
+import { COLORS, SHADOWS } from "../constants/theme";
 import { socket, connectSocket } from "../lib/socket";
 import useLocationStore from "../../store/locationStore";
+import useAuthStore from "../../store/authStore";
 import { useUpdateSearchRadius } from "../hooks/location";
 import { useProfile } from "../hooks/auth";
 
+const { width } = Dimensions.get("window");
+
 const MAP_STYLE = [
-  { elementType: "geometry", stylers: [{ color: "#f8f9fa" }] },
+  { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
   { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#f5f5f5" }] },
+  {
+    featureType: "landscape.man_made",
+    elementType: "geometry.fill",
+    stylers: [{ color: "#eceef3" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "geometry",
+    stylers: [{ color: "#eeeeee" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#ffffff" }],
+  },
   {
     featureType: "water",
     elementType: "geometry",
-    stylers: [{ color: "#e3e7f0" }],
+    stylers: [{ color: "#d2d6e2" }],
   },
 ];
 
 export default function RealtimeMap() {
   const mapRef = useRef<MapView>(null);
+  const markerRefs = useRef<{ [key: string]: any }>({});
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
   const { data: user } = useProfile();
   const updateSearchRadiusMutation = useUpdateSearchRadius();
 
   const [isInvisible, setIsInvisible] = useState(false);
+  const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
+
   const {
     myLocation,
     searchRadius,
@@ -52,150 +77,246 @@ export default function RealtimeMap() {
     nearbyUsers,
   } = useLocationStore();
 
-  // Next-Level Pulse Animation
+  // Pulse Animation for User Location
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.5,
-          duration: 2000,
+          toValue: 1.4,
+          duration: 1500,
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 2000,
+          duration: 1500,
           useNativeDriver: true,
         }),
       ])
     ).start();
+  }, []);
+
+  useEffect(() => {
     if (!socket.connected) connectSocket();
     startTracking();
     return () => stopTracking();
   }, []);
 
-  const handleUpdateRadius = (val: number) => {
-    const next = Math.max(100, Math.min(5000, searchRadius + val));
+  useEffect(() => {
+    if (myLocation.lat && mapRef.current) {
+      mapRef.current.animateCamera({
+        center: { latitude: myLocation.lat, longitude: myLocation.lng },
+        zoom: 15,
+        pitch: 45,
+      });
+    }
+  }, [myLocation.lat]);
+
+  const updateRadius = (radius: number) => {
+    const newRadius = Math.max(100, Math.min(5000, radius));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setSearchRadius(next);
-    updateSearchRadiusMutation.mutate({ radius: next });
+    setSearchRadius(newRadius);
+    updateSearchRadiusMutation.mutate({ radius: newRadius });
+  };
+
+  const toggleVisibility = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setIsInvisible(!isInvisible);
   };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
+
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         provider={PROVIDER_DEFAULT}
         customMapStyle={MAP_STYLE}
-        pitchEnabled
+        showsUserLocation={false}
+        showsCompass={false}
+        pitchEnabled={true}
       >
         {myLocation.lat && (
-          <>
-            <Circle
-              center={{ latitude: myLocation.lat, longitude: myLocation.lng }}
-              radius={!isInvisible ? searchRadius : 0}
-              fillColor="rgba(79, 70, 229, 0.04)"
-              strokeColor={COLORS.PRIMARY}
-              strokeWidth={1}
-            />
+          <Circle
+            center={{ latitude: myLocation.lat, longitude: myLocation.lng }}
+            radius={!isInvisible ? searchRadius : 0}
+            fillColor="rgba(79, 70, 229, 0.05)"
+            strokeColor={COLORS.PRIMARY}
+            strokeWidth={1}
+          />
+        )}
+
+        {myLocation.lat && (
+          <Marker
+            coordinate={{ latitude: myLocation.lat, longitude: myLocation.lng }}
+            anchor={{ x: 0.5, y: 0.5 }}
+            zIndex={10}
+          >
+            <View style={styles.myMarkerContainer}>
+              <Animated.View
+                style={[
+                  styles.pulseRing,
+                  { transform: [{ scale: pulseAnim }] },
+                ]}
+              />
+              <View style={styles.myMarkerDot}>
+                {user?.avatarUrl ? (
+                  <Image
+                    source={{ uri: user.avatarUrl }}
+                    style={styles.markerAvatar}
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder} />
+                )}
+              </View>
+            </View>
+          </Marker>
+        )}
+
+        {nearbyUsers
+          .filter((u) => u.id !== user?.id)
+          .map((u) => (
             <Marker
-              coordinate={{
-                latitude: myLocation.lat,
-                longitude: myLocation.lng,
+              key={`nearby-${u.id}`}
+              coordinate={{ latitude: u.lat, longitude: u.lng }}
+              tracksViewChanges={false}
+              ref={(ref) => (markerRefs.current[u.id] = ref)}
+              onPress={() => {
+                Haptics.selectionAsync();
+                if (selectedMarkerId === u.id) {
+                  markerRefs.current[u.id]?.hideCallout();
+                  setSelectedMarkerId(null);
+                } else {
+                  if (selectedMarkerId)
+                    markerRefs.current[selectedMarkerId]?.hideCallout();
+                  markerRefs.current[u.id]?.showCallout();
+                  setSelectedMarkerId(u.id);
+                }
               }}
-              anchor={{ x: 0.5, y: 0.5 }}
             >
-              <View style={styles.markerContainer}>
-                <Animated.View
-                  style={[
-                    styles.pulseRing,
-                    { transform: [{ scale: pulseAnim }] },
-                  ]}
-                />
-                <View style={styles.userDot}>
-                  {user?.avatarUrl && (
+              <View style={styles.otherMarker}>
+                <View style={styles.otherMarkerInner}>
+                  {u.avatarUrl ? (
                     <Image
-                      source={{ uri: user.avatarUrl }}
-                      style={styles.fullImage}
+                      source={{ uri: u.avatarUrl }}
+                      style={styles.nearbyAvatar}
                     />
+                  ) : (
+                    <FontAwesome5 name="dog" size={18} color="#FFF" />
                   )}
                 </View>
               </View>
+              <Callout tooltip>
+                <View style={styles.calloutWrapper}>
+                  <View style={styles.calloutContent}>
+                    {/* IMPROVED IMAGE LOGIC */}
+                    {u.avatarUrl ? (
+                      <Image
+                        source={{ uri: u.avatarUrl }}
+                        style={styles.calloutAvatar}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.calloutAvatar,
+                          styles.calloutPlaceholder,
+                        ]}
+                      >
+                        <FontAwesome5 name="dog" size={16} color="#FFF" />
+                      </View>
+                    )}
+
+                    <View style={styles.calloutTextContainer}>
+                      <Text style={styles.calloutName}>
+                        {u.dogName || "Pup"}
+                      </Text>
+                      <Text style={styles.calloutDistance}>
+                        {u.distance}m away
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.calloutTip} />
+                </View>
+              </Callout>
             </Marker>
-          </>
-        )}
+          ))}
       </MapView>
 
-      <SafeAreaView style={styles.topHud} pointerEvents="none">
-        <BlurView intensity={80} tint="light" style={styles.glassBadge}>
+      {/* Floating Status HUD */}
+      <SafeAreaView style={styles.topContainer} pointerEvents="none">
+        <BlurView intensity={80} tint="light" style={styles.statusCard}>
           <View
             style={[
-              styles.dot,
-              { backgroundColor: isInvisible ? COLORS.DANGER : COLORS.ACCENT },
+              styles.statusDot,
+              { backgroundColor: isInvisible ? "#FF4B4B" : COLORS.ACCENT },
             ]}
           />
-          <Text style={styles.badgeText}>
-            {nearbyUsers.length - 1} Pups Nearby
+          <Text style={styles.statusText}>
+            {isInvisible
+              ? "Ghost Mode Active"
+              : `${Math.max(0, nearbyUsers.length - 1)} Pups Nearby`}
           </Text>
         </BlurView>
       </SafeAreaView>
 
-      <View style={styles.bottomInterface}>
-        <BlurView intensity={95} tint="default" style={styles.glassPanel}>
-          <View style={styles.pillSelector}>
+      {/* Integrated Control Panel */}
+      <View style={styles.controlOverlay}>
+        <BlurView intensity={90} tint="default" style={styles.controlPanel}>
+          <View style={styles.pillContainer}>
             <TouchableOpacity
-              onPress={() => handleUpdateRadius(-200)}
-              style={styles.iconCircle}
+              style={styles.radiusIconButton}
+              onPress={() => updateRadius(searchRadius - 200)}
             >
               <Feather name="minus" size={20} color={COLORS.PRIMARY} />
             </TouchableOpacity>
-            <View style={{ alignItems: "center" }}>
-              <Text style={styles.radiusVal}>{searchRadius}m</Text>
-              <Text style={styles.radiusLabel}>SCAN RANGE</Text>
+
+            <View style={styles.radiusInfo}>
+              <Text style={styles.radiusValueText}>{searchRadius}m</Text>
+              <Text style={styles.radiusLabelText}>SCAN RADIUS</Text>
             </View>
+
             <TouchableOpacity
-              onPress={() => handleUpdateRadius(200)}
-              style={styles.iconCircle}
+              style={styles.radiusIconButton}
+              onPress={() => updateRadius(searchRadius + 200)}
             >
               <Feather name="plus" size={20} color={COLORS.PRIMARY} />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.row}>
+          <View style={styles.actionGrid}>
             <TouchableOpacity
-              style={[styles.btn, isInvisible && styles.btnActive]}
-              onPress={() => {
-                setIsInvisible(!isInvisible);
-                Haptics.notificationAsync(
-                  Haptics.NotificationFeedbackType.Warning
-                );
-              }}
+              style={[styles.glassBtn, isInvisible && styles.glassBtnActive]}
+              onPress={toggleVisibility}
             >
               <Feather
                 name={isInvisible ? "eye-off" : "eye"}
                 size={20}
                 color={isInvisible ? "#FFF" : COLORS.TEXT_PRIMARY}
               />
-              <Text style={[styles.btnText, isInvisible && { color: "#FFF" }]}>
-                Ghost
+              <Text
+                style={[styles.glassBtnText, isInvisible && { color: "#FFF" }]}
+              >
+                {isInvisible ? "Ghost" : "Visible"}
               </Text>
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={[styles.btn, styles.primaryBtn]}
-              onPress={() =>
-                mapRef.current?.animateCamera({
-                  center: {
-                    latitude: myLocation.lat,
-                    longitude: myLocation.lng,
-                  },
-                  zoom: 15,
-                })
-              }
+              style={[styles.glassBtn, styles.primaryBtn]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                mapRef.current?.animateToRegion({
+                  latitude: myLocation.lat,
+                  longitude: myLocation.lng,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                });
+              }}
             >
               <Ionicons name="navigate" size={20} color="#FFF" />
-              <Text style={[styles.btnText, { color: "#FFF" }]}>Recenter</Text>
+              <Text style={[styles.glassBtnText, { color: "#FFF" }]}>
+                Recenter
+              </Text>
             </TouchableOpacity>
           </View>
         </BlurView>
@@ -205,37 +326,10 @@ export default function RealtimeMap() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.BG_MAIN,
-  },
-  markerContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pulseRing: {
-    position: "absolute",
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: COLORS.PRIMARY,
-    opacity: 0.3,
-  },
-  userDot: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.PRIMARY,
-    borderWidth: 3,
-    borderColor: "#FFF",
-    ...SHADOWS.md,
-  },
-  fullImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  topHud: {
+  container: { flex: 1, backgroundColor: "#F0F2F5" },
+
+  // HUD Elements
+  topContainer: {
     position: "absolute",
     top: 0,
     left: 0,
@@ -243,99 +337,159 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: Platform.OS === "android" ? 40 : 10,
   },
-  glassBadge: {
+  statusCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 30,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
+    borderColor: "rgba(255,255,255,0.6)",
     ...SHADOWS.md,
+    overflow: "hidden",
   },
-  dot: {
+  statusDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.ACCENT,
-    marginRight: 8,
+    marginRight: 10,
   },
-  badgeText: {
-    color: COLORS.TEXT_PRIMARY,
-    fontWeight: "700",
+  statusText: {
+    color: "#1A1A1A",
+    fontWeight: "800",
     fontSize: 13,
+    letterSpacing: 0.3,
   },
-  bottomInterface: {
+
+  // Custom Markers
+  myMarkerContainer: { alignItems: "center", justifyContent: "center" },
+  pulseRing: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: SPACING.l,
-    paddingBottom: Platform.OS === "ios" ? 30 : 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: COLORS.PRIMARY,
+    opacity: 0.2,
   },
-  glassPanel: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderRadius: 24,
-    padding: SPACING.l,
+  myMarkerDot: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: COLORS.PRIMARY,
+    borderWidth: 3,
+    borderColor: "#FFF",
+    ...SHADOWS.md,
+    overflow: "hidden",
+  },
+  markerAvatar: { width: "100%", height: "100%" },
+  avatarPlaceholder: { flex: 1, backgroundColor: COLORS.PRIMARY },
+
+  otherMarker: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "#FFF",
+    alignItems: "center",
+    justifyContent: "center",
+    ...SHADOWS.sm,
+  },
+  otherMarkerInner: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.ACCENT,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  nearbyAvatar: { width: "100%", height: "100%" },
+
+  // Control Panel
+  controlOverlay: {
+    position: "absolute",
+    bottom: 110,
+    left: 16,
+    right: 16,
+  },
+  controlPanel: {
+    padding: 16,
+    borderRadius: 32,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
+    borderColor: "rgba(255,255,255,0.4)",
+    overflow: "hidden",
     ...SHADOWS.lg,
   },
-  pillSelector: {
+  pillContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: SPACING.l,
+    backgroundColor: "rgba(0,0,0,0.04)",
+    padding: 8,
+    borderRadius: 24,
+    marginBottom: 16,
   },
-  iconCircle: {
+  radiusIconButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: COLORS.BG_INPUT,
+    backgroundColor: "#FFF",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
+    ...SHADOWS.sm,
   },
-  radiusVal: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: 2,
+  radiusInfo: { alignItems: "center" },
+  radiusValueText: { fontSize: 20, fontWeight: "900", color: "#1A1A1A" },
+  radiusLabelText: {
+    fontSize: 9,
+    fontWeight: "bold",
+    color: "#666",
+    letterSpacing: 1,
   },
-  radiusLabel: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: COLORS.TEXT_TERTIARY,
-    letterSpacing: 0.5,
-  },
-  row: {
-    flexDirection: "row",
-    gap: SPACING.m,
-  },
-  btn: {
+
+  actionGrid: { flexDirection: "row", gap: 12 },
+  glassBtn: {
     flex: 1,
+    height: 56,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.8)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    backgroundColor: COLORS.BG_INPUT,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
     gap: 8,
   },
-  btnActive: {
-    backgroundColor: COLORS.TEXT_PRIMARY,
+  glassBtnActive: { backgroundColor: "#1A1A1A" },
+  primaryBtn: { backgroundColor: COLORS.PRIMARY, flex: 1.4 },
+  glassBtnText: { fontSize: 15, fontWeight: "700", color: "#1A1A1A" },
+
+  // Improved Callout
+  calloutWrapper: { alignItems: "center", width: 160 },
+  calloutContent: {
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    padding: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    ...SHADOWS.md,
   },
-  btnText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.TEXT_PRIMARY,
+  calloutAvatar: { width: 40, height: 40, borderRadius: 10, marginRight: 10 },
+  calloutTextContainer: { flex: 1 },
+  calloutName: { fontSize: 14, fontWeight: "800", color: "#1A1A1A" },
+  calloutDistance: { fontSize: 11, color: COLORS.ACCENT, fontWeight: "600" },
+  calloutTip: {
+    width: 0,
+    height: 0,
+    backgroundColor: "transparent",
+    borderStyle: "solid",
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 8,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderTopColor: "#FFF",
   },
-  primaryBtn: {
-    backgroundColor: COLORS.PRIMARY,
+  calloutPlaceholder: {
+    backgroundColor: COLORS.ACCENT,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
