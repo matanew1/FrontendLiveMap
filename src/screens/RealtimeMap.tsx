@@ -7,6 +7,7 @@ import {
   StatusBar,
   Dimensions,
   Platform,
+  Image,
 } from "react-native";
 import MapView, { Marker, Circle, PROVIDER_DEFAULT } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,6 +22,7 @@ import { socket, connectSocket } from "../lib/socket";
 import useLocationStore from "../../store/locationStore";
 import useAuthStore from "../../store/authStore";
 import { useUpdateSearchRadius } from "../hooks/location";
+import { useProfile } from "../hooks/auth";
 
 const { width, height } = Dimensions.get("window");
 
@@ -59,7 +61,7 @@ const MAP_STYLE = [
 
 export default function RealtimeMap() {
   const mapRef = useRef<MapView>(null);
-  const { user } = useAuthStore();
+  const { data: user } = useProfile();
   const updateSearchRadiusMutation = useUpdateSearchRadius();
 
   const [isInvisible, setIsInvisible] = useState(false);
@@ -131,7 +133,14 @@ export default function RealtimeMap() {
           >
             <View style={styles.myMarkerContainer}>
               <View style={styles.pulseRing} />
-              <View style={styles.myMarkerDot} />
+              <View style={styles.myMarkerDot}>
+                {user?.avatarUrl ? (
+                  <Image
+                    source={{ uri: user.avatarUrl }}
+                    style={styles.markerAvatar}
+                  />
+                ) : null}
+              </View>
             </View>
           </Marker>
         )}
@@ -147,7 +156,14 @@ export default function RealtimeMap() {
             >
               <View style={styles.otherMarker}>
                 <View style={styles.otherMarkerInner}>
-                  <FontAwesome5 name="dog" size={10} color="#FFF" />
+                  {u.avatarUrl ? (
+                    <Image
+                      source={{ uri: u.avatarUrl }}
+                      style={styles.nearbyAvatar}
+                    />
+                  ) : (
+                    <FontAwesome5 name="dog" size={10} color="#FFF" />
+                  )}
                 </View>
               </View>
             </Marker>
@@ -294,6 +310,11 @@ const styles = StyleSheet.create({
     borderColor: "#FFF",
     ...SHADOWS.md,
   },
+  markerAvatar: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+  },
   otherMarker: {
     width: 32,
     height: 32,
@@ -310,6 +331,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.ACCENT,
     alignItems: "center",
     justifyContent: "center",
+  },
+  nearbyAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
   },
 
   // Bottom Control Overlay

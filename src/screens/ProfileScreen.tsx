@@ -9,25 +9,36 @@ import {
   ActivityIndicator,
   Dimensions,
   StatusBar,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+
 import { ModernInput } from "../components/ModernInput";
 import { Skeleton } from "../components/Skeleton";
 import useAuthStore from "../../store/authStore";
-import { useProfile, useUpdateProfile, useSignOut } from "../hooks/auth";
+import {
+  useProfile,
+  useUpdateProfile,
+  useSignOut,
+  useUploadAvatar,
+} from "../hooks/auth";
 import { COLORS, SPACING, SHADOWS } from "../constants/theme";
 
 const { width: screenWidth } = Dimensions.get("window");
 const isSmallScreen = screenWidth < 375;
+const BACKEND_URL =
+  process.env.EXPO_PUBLIC_BACKEND_URL || "http://localhost:3000";
 
 export default function ProfileScreen() {
   const { user } = useAuthStore();
   const { data: profile, isLoading } = useProfile();
   const updateProfileMutation = useUpdateProfile();
   const signOutMutation = useSignOut();
+  const uploadAvatarMutation = useUploadAvatar();
 
-  const currentProfile = user || profile;
+  const currentProfile = profile;
 
   const [dogName, setDogName] = useState("");
   const [dogBreed, setDogBreed] = useState("");
@@ -69,6 +80,45 @@ export default function ProfileScreen() {
   };
 
   const profileCompletion = getProfileCompletion();
+
+  const handleAvatarPress = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        "Permission needed",
+        "Please allow access to your photo library."
+      );
+      return;
+    }
+
+    let result;
+    try {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      });
+    } catch (error) {
+      Alert.alert("Error", "Failed to open image picker: " + error.message);
+      return;
+    }
+
+    if (!result.canceled) {
+      const uri = result.assets[0].uri;
+      const fileName = uri.split("/").pop() || "avatar.jpg";
+      const fileType = fileName.split(".").pop() || "jpg";
+      const file = {
+        uri,
+        name: `avatar.${fileType}`,
+        type: `image/${fileType}`,
+      } as any;
+
+      try {
+        await uploadAvatarMutation.mutateAsync(file);
+        Alert.alert("Success", "Avatar updated successfully!");
+      } catch (error: any) {
+        Alert.alert("Error", error.message);
+      }
+    }
+  };
 
   if (isLoading) {
     return (
@@ -137,11 +187,31 @@ export default function ProfileScreen() {
           {/* Enhanced Avatar Section */}
           <View style={styles.avatarSection}>
             <View style={styles.avatarGlow}>
-              <View style={styles.avatarContainer}>
-                <Text style={styles.avatarText}>
-                  {currentProfile?.dogName?.[0]?.toUpperCase() || "🐕"}
-                </Text>
-              </View>
+              <TouchableOpacity
+                style={styles.avatarContainer}
+                onPress={handleAvatarPress}
+                disabled={uploadAvatarMutation.isPending}
+              >
+                {currentProfile?.avatarUrl ? (
+                  <>
+                    <Image
+                      source={{ uri: currentProfile.avatarUrl }}
+                      style={styles.avatarImage}
+                      key={currentProfile.avatarUrl}
+                    />
+                    <View style={styles.editOverlay}>
+                      <Feather name="edit" size={16} color="#FFF" />
+                    </View>
+                  </>
+                ) : (
+                  <Feather name="camera" size={40} color="#FFF" />
+                )}
+                {uploadAvatarMutation.isPending && (
+                  <View style={styles.uploadingOverlay}>
+                    <ActivityIndicator color="#FFF" />
+                  </View>
+                )}
+              </TouchableOpacity>
             </View>
             <View style={styles.nameSection}>
               <Text style={styles.dogNameText}>
@@ -376,6 +446,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 4,
     borderColor: "#FFF",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 55,
+  },
+  editOverlay: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 12,
+    padding: 4,
+  },
+  uploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 55,
   },
   avatarText: {
     fontSize: 44,

@@ -11,6 +11,14 @@
       "exp"
     ],
     "newArchEnabled": true,
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow CyDogApp to access your photos to upload an avatar."
+        }
+      ]
+    ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -19,7 +27,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "App needs your location to show you on the map"
+        "NSLocationWhenInUseUsageDescription": "App needs your location to show you on the map",
+        "NSPhotoLibraryUsageDescription": "Allow CyDogApp to access your photos to upload an avatar."
       }
     },
     "android": {
@@ -31,7 +40,8 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "READ_EXTERNAL_STORAGE"
       ],
       "config": {
         "googleMaps": {

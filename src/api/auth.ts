@@ -2,33 +2,9 @@ const BACKEND_URL =
   process.env.EXPO_PUBLIC_BACKEND_URL || "http://localhost:3000";
 
 import { apiClient } from "../services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export interface User {
-  id: string;
-  email: string;
-  dogName?: string;
-  dogBreed?: string;
-  dogAge?: number;
-  role?: string;
-}
-
-export interface AuthResponse {
-  statusCode: number;
-  message: string;
-  data: {
-    user: User;
-    session: {
-      access_token: string;
-      refresh_token: string;
-    };
-  };
-}
-
-export interface ProfileResponse {
-  statusCode: number;
-  message: string;
-  data: User;
-}
+export { User, AuthResponse, ProfileResponse } from "../types/auth";
 
 export const signIn = async (
   email: string,
@@ -99,31 +75,6 @@ export const getUserInfo = async (): Promise<User> => {
   return response.data;
 };
 
-export const refreshAccessToken = async (
-  refreshToken: string
-): Promise<{ accessToken: string; refreshToken: string; user: User }> => {
-  const response = await fetch(`${BACKEND_URL}/auth/refresh`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ refreshToken }),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to refresh token");
-  }
-
-  const data: AuthResponse = await response.json();
-  const { user, session } = data.data;
-
-  return {
-    accessToken: session.access_token,
-    refreshToken: session.refresh_token,
-    user,
-  };
-};
-
 export const getUserProfile = async (): Promise<User> => {
   // The new apiClient handles authentication automatically
   const response = await apiClient.get("/auth/profile");
@@ -144,4 +95,31 @@ export const updateUserRole = async (
 ): Promise<void> => {
   // The new apiClient handles authentication automatically
   await apiClient.patch(`/auth/role/${userId}`, { role });
+};
+
+export const uploadAvatar = async (
+  file: any,
+  isUpdate: boolean = false
+): Promise<{ avatarUrl: string }> => {
+  const token = await AsyncStorage.getItem("accessToken");
+  const endpoint = isUpdate ? "/auth/avatar" : "/auth/upload-avatar";
+  const method = isUpdate ? "PATCH" : "POST";
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message);
+  }
+
+  const data = await response.json();
+  return data.data;
 };

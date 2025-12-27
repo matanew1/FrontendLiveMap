@@ -1,6 +1,6 @@
 // src/services/api.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { refreshAccessToken } from "../api/auth";
+import { User, AuthResponse } from "../types/auth";
 import useAuthStore from "../../store/authStore";
 
 const API_BASE_URL =
@@ -9,6 +9,31 @@ const API_BASE_URL =
 // Flag to prevent multiple simultaneous refresh attempts
 let isRefreshing = false;
 let refreshPromise: Promise<any> | null = null;
+
+const refreshAccessToken = async (
+  refreshToken: string
+): Promise<{ accessToken: string; refreshToken: string; user: User }> => {
+  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to refresh token");
+  }
+
+  const data: AuthResponse = await response.json();
+  const { user, session } = data.data;
+
+  return {
+    accessToken: session.access_token,
+    refreshToken: session.refresh_token,
+    user,
+  };
+};
 
 const getAuthHeaders = async () => {
   const token = await AsyncStorage.getItem("accessToken");

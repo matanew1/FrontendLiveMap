@@ -10,6 +10,7 @@ import {
   getUserProfile,
   updateUserProfile,
   updateUserRole,
+  uploadAvatar,
   User,
 } from "../api/auth";
 
@@ -175,6 +176,27 @@ export const useUpdateUserRole = () => {
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: authKeys.user });
       queryClient.invalidateQueries({ queryKey: authKeys.profile });
+    },
+  });
+};
+
+export const useUploadAvatar = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (file: any) => {
+      const currentUser = useAuthStore.getState().user;
+      const isUpdate = !!currentUser?.avatarUrl;
+      return await uploadAvatar(file, isUpdate);
+    },
+    onSuccess: (data) => {
+      // Update the user in store with the new avatarUrl
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        const updatedUser = { ...currentUser, avatarUrl: data.avatarUrl };
+        useAuthStore.getState().setUser(updatedUser);
+        queryClient.invalidateQueries({ queryKey: authKeys.profile });
+      }
     },
   });
 };
