@@ -147,7 +147,7 @@ export default function ProfileScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.BG_MAIN} />
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
         {/* RESPONSIVE GLASSMORPHISM HEADER */}
         <View style={styles.glassHeader}>
           <View style={styles.headerContent}>
@@ -159,15 +159,6 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.headerActions}>
-                {/* Gamified Walkies Streak */}
-                <View style={styles.streakBadge}>
-                  <MaterialCommunityIcons
-                    name="fire"
-                    size={18}
-                    color="#F59E0B"
-                  />
-                  <Text style={styles.streakText}>5</Text>
-                </View>
                 <TouchableOpacity
                   style={styles.signOutIconButton}
                   onPress={() => signOutMutation.mutate()}

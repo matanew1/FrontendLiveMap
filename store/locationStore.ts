@@ -33,6 +33,7 @@ interface LocationState {
   filters: LocationFilters;
   isTracking: boolean;
   isUpdatingFromSocket: boolean; // Flag to prevent recursive updates
+  lastUpdateTime: number; // Timestamp of last location update to server
 
   // Actions
   setCurrentLocation: (location: { lat: number; lng: number }) => void;
@@ -64,6 +65,7 @@ const useLocationStore = create<LocationState>()(
         filters: {},
         isTracking: false,
         isUpdatingFromSocket: false,
+        lastUpdateTime: 0,
 
         // Legacy property for backward compatibility
         myLocation: { lat: 32.0853, lng: 34.7818 },
@@ -106,6 +108,7 @@ const useLocationStore = create<LocationState>()(
             nearbyUsers: [],
             isTracking: false,
             myLocation: { lat: 32.0853, lng: 34.7818 }, // Reset to default
+            lastUpdateTime: 0,
           }),
 
         startTracking: async () => {
@@ -116,16 +119,17 @@ const useLocationStore = create<LocationState>()(
           const user = useAuthStore.getState().user;
           if (!user) return;
 
-          // Start GPS Watcher
+          // Start GPS Watcher with optimized settings for accuracy and reduced updates
           locationSubscription = await Location.watchPositionAsync(
             {
-              accuracy: Location.Accuracy.BestForNavigation,
-              distanceInterval: 1,
-              timeInterval: 2000,
+              accuracy: Location.Accuracy.Highest, // More accurate than BestForNavigation
+              distanceInterval: 5, // Require 5 meters movement before update
+              timeInterval: 5000, // Minimum 5 seconds between updates
             },
             (location) => {
               const { latitude, longitude } = location.coords;
               const locationData = { lat: latitude, lng: longitude };
+              const now = Date.now();
 
               // Update local state immediately
               set({
@@ -134,9 +138,13 @@ const useLocationStore = create<LocationState>()(
                 isTracking: true,
               });
 
-              // Notify server with filters (only if not updating from socket)
+              // Throttle server updates to prevent excessive refetching
               const state = get();
-              if (!state.isUpdatingFromSocket) {
+              if (
+                !state.isUpdatingFromSocket &&
+                now - state.lastUpdateTime > 5000 // At least 5 seconds since last update
+              ) {
+                set({ lastUpdateTime: now });
                 // Lazy import to avoid circular dependency
                 import("../src/lib/socket").then(({ socket }) => {
                   socket.emit("update_location", {

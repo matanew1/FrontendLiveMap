@@ -135,7 +135,7 @@ export default function DashboardScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.BG_MAIN} />
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
         {/* RESPONSIVE GLASSMOPRHISM HEADER */}
         <View style={styles.glassHeader}>
           <View style={styles.headerContent}>
@@ -147,15 +147,6 @@ export default function DashboardScreen() {
               </View>
 
               <View style={styles.headerActions}>
-                {/* Gamified Walkies Streak */}
-                <View style={styles.streakBadge}>
-                  <MaterialCommunityIcons
-                    name="fire"
-                    size={18}
-                    color="#F59E0B"
-                  />
-                  <Text style={styles.streakText}>5</Text>
-                </View>
                 <TouchableOpacity style={styles.iconBtn}>
                   <Feather name="bell" size={22} color={COLORS.TEXT_PRIMARY} />
                 </TouchableOpacity>
