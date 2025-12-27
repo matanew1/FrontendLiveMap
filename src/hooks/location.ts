@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { updateLocation, updateSearchRadius } from "../lib/socket";
 import useLocationStore from "../../store/locationStore";
 import useAuthStore from "../../store/authStore";
+import { LocationFilters } from "../types/location";
 
 // Query keys
 export const locationKeys = {
@@ -17,7 +18,7 @@ export const useUpdateSearchRadius = () => {
       filters,
     }: {
       radius: number;
-      filters?: any;
+      filters?: LocationFilters;
     }) => {
       const user = useAuthStore.getState().user;
       if (!user) throw new Error("User not authenticated");

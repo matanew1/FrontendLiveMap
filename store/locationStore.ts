@@ -3,31 +3,14 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
 import useAuthStore from "./authStore";
-
-export interface NearbyUser {
-  id: string;
-  user_id?: string; // For backward compatibility
-  email: string;
-  dogName?: string;
-  dogBreed?: string;
-  dogAge?: number;
-  lat: number;
-  lng: number;
-  distance: number;
-  avatarUrl?: string;
-}
-
-export interface LocationFilters {
-  breed?: string;
-  age?: number;
-  radius?: number;
-}
+import {
+  NearbyUser,
+  LocationFilters,
+  LocationData,
+} from "../src/types/location";
 
 interface LocationState {
-  currentLocation: {
-    lat: number;
-    lng: number;
-  } | null;
+  currentLocation: LocationData | null;
   nearbyUsers: NearbyUser[];
   searchRadius: number;
   filters: LocationFilters;
@@ -35,7 +18,7 @@ interface LocationState {
   isUpdatingFromSocket: boolean; // Flag to prevent recursive updates
 
   // Actions
-  setCurrentLocation: (location: { lat: number; lng: number }) => void;
+  setCurrentLocation: (location: LocationData) => void;
   setNearbyUsers: (users: NearbyUser[]) => void;
   updateNearbyUsers: (users: NearbyUser[]) => void;
   updateNearbyUser: (userId: string, updates: Partial<NearbyUser>) => void;
@@ -47,7 +30,7 @@ interface LocationState {
   clearLocationData: () => void;
 
   // Legacy methods for compatibility
-  myLocation: { lat: number; lng: number };
+  myLocation: LocationData;
   startTracking: () => Promise<void>;
   stopTracking: () => void;
 }

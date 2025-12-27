@@ -8,6 +8,7 @@ import {
   RefreshControl,
   StatusBar,
   Dimensions,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -29,6 +30,8 @@ const MOCK_POSTS = [
     content: "Squirrel hunting season is officially open! 🐿️",
     time: "2h ago",
     likes: 128,
+    imageUrl:
+      "https://images.unsplash.com/photo-1605568427561-40dd23c2acea?w=400&h=300&fit=crop",
   },
   {
     id: "2",
@@ -39,6 +42,8 @@ const MOCK_POSTS = [
     content: "Found a new pet-friendly latte spot!",
     time: "4h ago",
     likes: 84,
+    imageUrl:
+      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop",
   },
 ];
 
@@ -103,12 +108,15 @@ export default function DashboardScreen() {
 
         <Text style={styles.postContent}>{item.content}</Text>
 
-        <View style={styles.mediaPlaceholder}>
-          <View style={styles.mediaContent}>
-            <Feather name="image" size={32} color={COLORS.TEXT_TERTIARY} />
-            <Text style={styles.mediaText}>Photo</Text>
+        {item.imageUrl && (
+          <View style={styles.mediaContainer}>
+            <Image
+              source={{ uri: item.imageUrl }}
+              style={styles.postImage}
+              resizeMode="cover"
+            />
           </View>
-        </View>
+        )}
 
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.actionBtn}>
@@ -315,21 +323,16 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: SPACING.l,
   },
-  mediaPlaceholder: {
+  mediaContainer: {
     width: "100%",
-    height: 180,
-    backgroundColor: COLORS.BG_INPUT,
+    height: 200,
     borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
+    overflow: "hidden",
     marginBottom: SPACING.l,
   },
-  mediaContent: { alignItems: "center" },
-  mediaText: {
-    color: COLORS.TEXT_TERTIARY,
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: SPACING.xs,
+  postImage: {
+    width: "100%",
+    height: "100%",
   },
   actionRow: {
     flexDirection: "row",
