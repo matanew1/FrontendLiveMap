@@ -1,67 +1,72 @@
+// src/constants/theme.ts
 import { Dimensions, Platform } from "react-native";
 
 const { width, height } = Dimensions.get("window");
-
-export const COLORS = {
-  // Brand Identity - Refined Indigo & Emerald
-  PRIMARY: "#6366F1",
-  PRIMARY_LIGHT: "#EEF2FF",
-  ACCENT: "#10B981",
-  DANGER: "#F43F5E",
-  WARNING: "#F59E0B", // For the "Fire" streak
-
-  // Backgrounds - Slate based for premium feel
-  BG_MAIN: "#F8FAFC",
-  BG_CARD: "#FFFFFF",
-  BG_INPUT: "#F1F5F9",
-  GLASS: "rgba(255, 255, 255, 0.85)",
-
-  // Typography
-  TEXT_PRIMARY: "#0F172A",
-  TEXT_SECONDARY: "#64748B",
-  TEXT_TERTIARY: "#94A3B8",
-
-  // UI Elements
-  BORDER: "#E2E8F0",
-  ICON: "#475569",
-  OVERLAY: "rgba(15, 23, 42, 0.4)",
-};
-
-export const SPACING = {
-  xs: 4,
-  s: 8,
-  m: 16,
-  l: 24,
-  xl: 32,
-  xxl: 48,
-};
-
-export const SHADOWS = {
-  // Multi-layered soft shadows
-  sm: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  md: {
-    shadowColor: "#6366F1",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  lg: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-};
 
 export const FONTS = {
   regular: Platform.OS === "ios" ? "System" : "Roboto",
   bold: Platform.OS === "ios" ? "System" : "Roboto",
 };
+
+export const COLORS = {
+  PRIMARY: "#6366F1",
+  PRIMARY_DARK: "#4F46E5",
+  PRIMARY_LIGHT: "#EEF2FF",
+  ACCENT: "#10B981",
+  DANGER: "#F43F5E",
+  WARNING: "#F59E0B",
+
+  // Modern Neutrals
+  BG_MAIN: "#F8FAFC",
+  BG_SURFACE: "#FFFFFF",
+  BG_INPUT: "#F1F5F9",
+  BG_CARD: "#FFFFFF",
+
+  // Typography
+  TEXT_PRIMARY: "#0F172A",
+  TEXT_SECONDARY: "#475569",
+  TEXT_TERTIARY: "#94A3B8",
+
+  BORDER: "#E2E8F0",
+  DIVIDER: "rgba(226, 232, 240, 0.6)",
+};
+
+export const SHADOWS = {
+  subtle: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
+    elevation: 2,
+  },
+  sm: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 1,
+  },
+  md: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  lg: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  premium: {
+    shadowColor: "#6366F1",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+};
+
+export const SPACING = { xs: 4, s: 8, m: 16, l: 24, xl: 32, xxl: 48 };

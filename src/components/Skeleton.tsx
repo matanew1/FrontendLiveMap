@@ -32,7 +32,7 @@ export const Skeleton = ({ width, height, style }: SkeletonProps) => {
     <Animated.View
       style={[
         {
-          width,
+          width: width as any,
           height,
           backgroundColor: COLORS.BORDER,
           borderRadius: 6,

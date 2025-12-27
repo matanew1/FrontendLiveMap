@@ -9,10 +9,9 @@ import {
   getUserInfo,
   getUserProfile,
   updateUserProfile,
-  updateUserRole,
   uploadAvatar,
-  User,
 } from "../api/auth";
+import { User } from "../types/auth";
 
 const BACKEND_URL =
   process.env.EXPO_PUBLIC_BACKEND_URL || "http://localhost:3000";
@@ -160,22 +159,6 @@ export const useUpdateProfile = () => {
     },
     onError: (error) => {
       console.error("❌ useUpdateProfile: onError called with:", error);
-    },
-  });
-};
-
-export const useUpdateUserRole = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
-      await updateUserRole(userId, role); // Token handled automatically by apiClient
-      return { userId, role };
-    },
-    onSuccess: () => {
-      // Invalidate queries to refetch data
-      queryClient.invalidateQueries({ queryKey: authKeys.user });
-      queryClient.invalidateQueries({ queryKey: authKeys.profile });
     },
   });
 };

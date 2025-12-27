@@ -165,24 +165,3 @@ export const apiClient = {
   patch: (endpoint: string, data: any) => makeRequest("PATCH", endpoint, data),
   delete: (endpoint: string) => makeRequest("DELETE", endpoint),
 };
-
-// Legacy apiClient for backward compatibility
-export const legacyApiClient = {
-  post: async (endpoint: string, data: any) => {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.message || "API request failed");
-    }
-
-    return result;
-  },
-};

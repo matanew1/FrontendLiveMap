@@ -97,7 +97,10 @@ export default function ProfileScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
       });
     } catch (error) {
-      Alert.alert("Error", "Failed to open image picker: " + error.message);
+      Alert.alert(
+        "Error",
+        "Failed to open image picker: " + (error as any).message
+      );
       return;
     }
 

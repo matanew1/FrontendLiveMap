@@ -106,11 +106,7 @@ export default function RealtimeMap() {
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="dark-content"
-        transparent
-        backgroundColor="transparent"
-      />
+      <StatusBar barStyle="dark-content" />
 
       <MapView
         ref={mapRef}

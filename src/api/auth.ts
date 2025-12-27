@@ -3,8 +3,7 @@ const BACKEND_URL =
 
 import { apiClient } from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-export { User, AuthResponse, ProfileResponse } from "../types/auth";
+import { User, AuthResponse, ProfileResponse } from "../types/auth";
 
 export const signIn = async (
   email: string,
@@ -87,14 +86,6 @@ export const updateUserProfile = async (
   // The new apiClient handles authentication automatically
   const response = await apiClient.patch("/auth/profile", profileData);
   return response.data;
-};
-
-export const updateUserRole = async (
-  userId: string,
-  role: string
-): Promise<void> => {
-  // The new apiClient handles authentication automatically
-  await apiClient.patch(`/auth/role/${userId}`, { role });
 };
 
 export const uploadAvatar = async (
