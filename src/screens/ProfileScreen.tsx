@@ -310,56 +310,11 @@ export default function ProfileScreen() {
               )}
             </TouchableOpacity>
           </View>
-
-          {/* Account Settings List */}
-          <View style={styles.formCard}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardIconBox}>
-                <Ionicons
-                  name="settings-outline"
-                  size={20}
-                  color={COLORS.PRIMARY}
-                />
-              </View>
-              <Text style={styles.cardTitle}>Preferences</Text>
-            </View>
-
-            <View style={styles.settingsList}>
-              <SettingItem icon="bell" label="Notifications" />
-              <SettingItem icon="shield" label="Privacy & Visibility" />
-              <SettingItem
-                icon="help-circle"
-                label="Support Center"
-                border={false}
-              />
-            </View>
-          </View>
         </ScrollView>
       </SafeAreaView>
     </View>
   );
 }
-
-// Helper Component for Settings Rows
-const SettingItem = ({
-  icon,
-  label,
-  border = true,
-}: {
-  icon: any;
-  label: string;
-  border?: boolean;
-}) => (
-  <TouchableOpacity
-    style={[styles.settingItem, !border && { borderBottomWidth: 0 }]}
-  >
-    <View style={styles.settingLeft}>
-      <Feather name={icon} size={18} color={COLORS.TEXT_SECONDARY} />
-      <Text style={styles.settingText}>{label}</Text>
-    </View>
-    <Feather name="chevron-right" size={18} color={COLORS.TEXT_TERTIARY} />
-  </TouchableOpacity>
-);
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.BG_MAIN },
@@ -556,29 +511,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
     color: COLORS.TEXT_PRIMARY,
-  },
-
-  // Settings List
-  settingsList: {
-    marginTop: -SPACING.s,
-  },
-  settingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: SPACING.m,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BG_INPUT,
-  },
-  settingLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  settingText: {
-    fontSize: 15,
-    color: COLORS.TEXT_PRIMARY,
-    marginLeft: SPACING.m,
-    fontWeight: "500",
   },
 
   // Buttons
