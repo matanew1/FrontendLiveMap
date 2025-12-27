@@ -168,9 +168,8 @@ export const useUploadAvatar = () => {
 
   return useMutation({
     mutationFn: async (file: any) => {
-      const currentUser = useAuthStore.getState().user;
-      const isUpdate = !!currentUser?.avatarUrl;
-      return await uploadAvatar(file, isUpdate);
+      // Always use the same upload endpoint for both new uploads and updates
+      return await uploadAvatar(file);
     },
     onSuccess: (data) => {
       // Update the user in store with the new avatarUrl

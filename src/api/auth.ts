@@ -89,12 +89,12 @@ export const updateUserProfile = async (
 };
 
 export const uploadAvatar = async (
-  file: any,
-  isUpdate: boolean = false
+  file: any
 ): Promise<{ avatarUrl: string }> => {
   const token = await AsyncStorage.getItem("accessToken");
-  const endpoint = isUpdate ? "/auth/avatar" : "/auth/upload-avatar";
-  const method = isUpdate ? "PATCH" : "POST";
+  // Always use POST /auth/upload-avatar for now since PATCH /auth/avatar is not implemented
+  const endpoint = "/auth/upload-avatar";
+  const method = "POST";
   const formData = new FormData();
   formData.append("file", file);
 
