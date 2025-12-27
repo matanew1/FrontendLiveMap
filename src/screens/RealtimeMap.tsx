@@ -183,7 +183,7 @@ export default function RealtimeMap() {
                       style={styles.nearbyAvatar}
                     />
                   ) : (
-                    <FontAwesome5 name="dog" size={10} color="#FFF" />
+                    <FontAwesome5 name="dog" size={16} color="#FFF" />
                   )}
                 </View>
               </View>
@@ -378,26 +378,26 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   otherMarker: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "#FFF",
     alignItems: "center",
     justifyContent: "center",
     ...SHADOWS.sm,
   },
   otherMarkerInner: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: COLORS.ACCENT,
     alignItems: "center",
     justifyContent: "center",
   },
   nearbyAvatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
 
   // Bottom Control Overlay
