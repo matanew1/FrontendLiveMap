@@ -199,7 +199,7 @@ export default function RealtimeMap() {
                     />
                   ) : (
                     <View style={styles.calloutAvatarPlaceholder}>
-                      <FontAwesome5 name="dog" size={20} color="#FFF" />
+                      <FontAwesome5 name="dog" size={30} color="#FFF" />
                     </View>
                   )}
                   <View style={styles.calloutText}>
@@ -481,19 +481,19 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: "#FFF",
     borderRadius: 12,
-    minWidth: 200,
+    minWidth: 240,
     ...SHADOWS.md,
   },
   calloutAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     marginRight: 12,
   },
   calloutAvatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: COLORS.ACCENT,
     alignItems: "center",
     justifyContent: "center",
