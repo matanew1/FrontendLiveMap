@@ -14,6 +14,7 @@ export interface NearbyUser {
   lat: number;
   lng: number;
   distance: number;
+  avatarUrl?: string;
 }
 
 export interface LocationFilters {

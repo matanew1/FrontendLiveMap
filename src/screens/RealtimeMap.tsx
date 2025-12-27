@@ -9,7 +9,12 @@ import {
   Platform,
   Image,
 } from "react-native";
-import MapView, { Marker, Circle, PROVIDER_DEFAULT } from "react-native-maps";
+import MapView, {
+  Marker,
+  Circle,
+  PROVIDER_DEFAULT,
+  Callout,
+} from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Feather,
@@ -61,10 +66,12 @@ const MAP_STYLE = [
 
 export default function RealtimeMap() {
   const mapRef = useRef<MapView>(null);
+  const markerRefs = useRef<{ [key: string]: any }>({});
   const { data: user } = useProfile();
   const updateSearchRadiusMutation = useUpdateSearchRadius();
 
   const [isInvisible, setIsInvisible] = useState(false);
+  const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
 
   const {
     myLocation,
@@ -153,6 +160,20 @@ export default function RealtimeMap() {
               key={`nearby-${u.id}`}
               coordinate={{ latitude: u.lat, longitude: u.lng }}
               tracksViewChanges={false}
+              ref={(ref) => {
+                markerRefs.current[u.id] = ref;
+              }}
+              onPress={() => {
+                if (selectedMarkerId === u.id) {
+                  markerRefs.current[u.id]?.hideCallout();
+                  setSelectedMarkerId(null);
+                } else {
+                  if (selectedMarkerId)
+                    markerRefs.current[selectedMarkerId]?.hideCallout();
+                  markerRefs.current[u.id]?.showCallout();
+                  setSelectedMarkerId(u.id);
+                }
+              }}
             >
               <View style={styles.otherMarker}>
                 <View style={styles.otherMarkerInner}>
@@ -166,6 +187,47 @@ export default function RealtimeMap() {
                   )}
                 </View>
               </View>
+              <Callout onPress={() => {}}>
+                <TouchableOpacity
+                  style={styles.calloutContent}
+                  activeOpacity={1}
+                >
+                  {u.avatarUrl ? (
+                    <Image
+                      source={{ uri: u.avatarUrl }}
+                      style={styles.calloutAvatar}
+                    />
+                  ) : (
+                    <View style={styles.calloutAvatarPlaceholder}>
+                      <FontAwesome5 name="dog" size={20} color="#FFF" />
+                    </View>
+                  )}
+                  <View style={styles.calloutText}>
+                    <Text style={styles.calloutName}>
+                      {u.dogName || "Anonymous Pup"}
+                    </Text>
+                    {u.dogBreed && (
+                      <Text style={styles.calloutBreed}>{u.dogBreed}</Text>
+                    )}
+                    <Text style={styles.calloutDistance}>
+                      {u.distance}m away
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.calloutCloseBtn}
+                    onPress={() => {
+                      markerRefs.current[u.id]?.hideCallout();
+                      setSelectedMarkerId(null);
+                    }}
+                  >
+                    <Ionicons
+                      name="close"
+                      size={16}
+                      color={COLORS.TEXT_SECONDARY}
+                    />
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              </Callout>
             </Marker>
           ))}
       </MapView>
@@ -410,5 +472,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: COLORS.TEXT_PRIMARY,
+  },
+
+  // Callout Styles
+  calloutContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    minWidth: 200,
+    ...SHADOWS.md,
+  },
+  calloutAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  calloutAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.ACCENT,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  calloutText: {
+    flex: 1,
+  },
+  calloutName: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: 2,
+  },
+  calloutBreed: {
+    fontSize: 12,
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: 4,
+  },
+  calloutDistance: {
+    fontSize: 12,
+    color: COLORS.ACCENT,
+    fontWeight: "600",
+  },
+  calloutCloseBtn: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: COLORS.BG_INPUT,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
