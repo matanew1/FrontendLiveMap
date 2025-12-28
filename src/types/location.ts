@@ -37,5 +37,6 @@ export interface SocketLocationUpdate {
     lat: number;
     lng: number;
     distance: number;
+    avatarUrl?: string;
   }>;
 }

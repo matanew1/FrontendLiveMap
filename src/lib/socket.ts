@@ -75,6 +75,7 @@ socket.on("location_updated", (data: SocketLocationUpdate) => {
       lat: user.lat,
       lng: user.lng,
       distance: user.distance,
+      avatarUrl: user.avatarUrl,
     }));
 
     // Update nearby users in the store

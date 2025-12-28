@@ -106,7 +106,7 @@ export default function RealtimeMap() {
       mapRef.current.animateCamera({
         center: { latitude: myLocation.lat, longitude: myLocation.lng },
         zoom: 15,
-        pitch: 45,
+        pitch: 0,
       });
     }
   }, [myLocation.lat]);
@@ -181,7 +181,9 @@ export default function RealtimeMap() {
               key={`nearby-${u.id}`}
               coordinate={{ latitude: u.lat, longitude: u.lng }}
               tracksViewChanges={false}
-              ref={(ref) => (markerRefs.current[u.id] = ref)}
+              ref={(ref) => {
+                markerRefs.current[u.id] = ref;
+              }}
               onPress={() => {
                 Haptics.selectionAsync();
                 if (selectedMarkerId === u.id) {
@@ -197,6 +199,7 @@ export default function RealtimeMap() {
             >
               <View style={styles.otherMarker}>
                 <View style={styles.otherMarkerInner}>
+                  { console.log("user: " + JSON.stringify(u))}
                   {u.avatarUrl ? (
                     <Image
                       source={{ uri: u.avatarUrl }}
@@ -214,6 +217,11 @@ export default function RealtimeMap() {
                     {u.avatarUrl ? (
                       <Image
                         source={{ uri: u.avatarUrl }}
+                        style={styles.calloutAvatar}
+                      />
+                    ) : user?.avatarUrl ? (
+                      <Image
+                        source={{ uri: user.avatarUrl }}
                         style={styles.calloutAvatar}
                       />
                     ) : (
