@@ -199,10 +199,14 @@ export default function RealtimeMap() {
             >
               <View style={styles.otherMarker}>
                 <View style={styles.otherMarkerInner}>
-                  { console.log("user: " + JSON.stringify(u))}
                   {u.avatarUrl ? (
                     <Image
                       source={{ uri: u.avatarUrl }}
+                      style={styles.nearbyAvatar}
+                    />
+                  ) : user?.avatarUrl ? (
+                    <Image
+                      source={{ uri: user.avatarUrl }}
                       style={styles.nearbyAvatar}
                     />
                   ) : (

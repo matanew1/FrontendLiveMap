@@ -27,6 +27,16 @@ export const usePosts = () => {
     queryKey: postKeys.lists(),
     queryFn: getPosts,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: (failureCount, error) => {
+      // Don't retry on 404s (endpoint not implemented yet)
+      if (
+        error?.message?.includes("404") ||
+        error?.message?.includes("not available")
+      ) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 };
 
@@ -36,6 +46,15 @@ export const useUserPosts = (userId: string) => {
     queryKey: postKeys.userPosts(userId),
     queryFn: () => getUserPosts(userId),
     enabled: !!userId,
+    retry: (failureCount, error) => {
+      if (
+        error?.message?.includes("404") ||
+        error?.message?.includes("not available")
+      ) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 };
 
@@ -45,6 +64,15 @@ export const usePost = (postId: string) => {
     queryKey: postKeys.detail(postId),
     queryFn: () => getPost(postId),
     enabled: !!postId,
+    retry: (failureCount, error) => {
+      if (
+        error?.message?.includes("404") ||
+        error?.message?.includes("not available")
+      ) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 };
 
