@@ -4,6 +4,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import useAuthStore from "../../store/authStore";
 import AuthScreen from "../screens/AuthScreen";
@@ -55,10 +56,21 @@ const TabNavigator = () => {
           else if (route.name === "Profile")
             iconName = focused ? "person" : "person-outline";
 
+          if (focused) {
+            return (
+              <LinearGradient
+                colors={[COLORS.PRIMARY_LIGHT, "#E0E7FF"]}
+                style={styles.tabIconContainer}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name={iconName} size={22} color={color} />
+              </LinearGradient>
+            );
+          }
+
           return (
-            <View
-              style={[styles.tabIconContainer, focused && styles.tabIconActive]}
-            >
+            <View style={styles.tabIconContainer}>
               <Ionicons name={iconName} size={22} color={color} />
             </View>
           );
@@ -177,9 +189,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-  },
-  tabIconActive: {
-    backgroundColor: COLORS.PRIMARY_LIGHT,
   },
 });
 

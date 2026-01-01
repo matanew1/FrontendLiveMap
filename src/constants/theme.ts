@@ -31,41 +31,49 @@ export const COLORS = {
   DIVIDER: "rgba(226, 232, 240, 0.6)",
 };
 
+export const GRADIENTS = {
+  primary: ["#6366F1", "#8B5CF6"] as const,
+  accent: ["#10B981", "#34D399"] as const,
+  danger: ["#F43F5E", "#FB7185"] as const,
+  dark: ["#1E293B", "#0F172A"] as const,
+  glass: ["rgba(255,255,255,0.8)", "rgba(255,255,255,0.4)"] as const,
+};
+
 export const SHADOWS = {
   subtle: {
-    shadowColor: "#000",
+    shadowColor: "#64748B",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 15,
+    shadowRadius: 10,
     elevation: 2,
   },
   sm: {
-    shadowColor: "#000",
+    shadowColor: "#64748B",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 1,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   md: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
   },
   lg: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowRadius: 24,
+    elevation: 12,
   },
   premium: {
     shadowColor: "#6366F1",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 12,
   },
 };
 

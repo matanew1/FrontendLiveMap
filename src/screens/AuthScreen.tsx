@@ -12,7 +12,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FontAwesome5, Feather } from "@expo/vector-icons";
-import { COLORS, SPACING, SHADOWS } from "../constants/theme";
+import { LinearGradient } from "expo-linear-gradient";
+import { COLORS, SPACING, SHADOWS, GRADIENTS } from "../constants/theme";
 import { ModernInput } from "../components/ModernInput";
 import { useSignIn, useSignUp } from "../hooks/auth";
 
@@ -27,15 +28,27 @@ export default function AuthScreen() {
   const error = signIn.error || signUp.error;
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={GRADIENTS.primary}
+      style={styles.container}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.flex}
         >
           <View style={styles.brandContainer}>
-            <View style={styles.logoCircle}>
-              <FontAwesome5 name="dog" size={32} color={COLORS.PRIMARY} />
+            <View style={styles.logoGlowContainer}>
+              <LinearGradient
+                colors={GRADIENTS.accent}
+                style={styles.logoCircle}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <FontAwesome5 name="dog" size={36} color="#FFF" />
+              </LinearGradient>
             </View>
             <Text style={styles.brandName}>CyDog</Text>
             <Text style={styles.tagline}>
@@ -72,20 +85,28 @@ export default function AuthScreen() {
             />
 
             <TouchableOpacity
-              style={[styles.mainBtn, isLoading && styles.btnDisabled]}
+              activeOpacity={0.8}
               onPress={() =>
                 isSignUp
                   ? signUp.mutate({ email, password })
                   : signIn.mutate({ email, password })
               }
+              disabled={isLoading}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.btnText}>
-                  {isSignUp ? "Join the Pack" : "Sign In"}
-                </Text>
-              )}
+              <LinearGradient
+                colors={GRADIENTS.accent}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.mainBtn, isLoading && styles.btnDisabled]}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Text style={styles.btnText}>
+                    {isSignUp ? "Join the Pack" : "Sign In"}
+                  </Text>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -101,64 +122,80 @@ export default function AuthScreen() {
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.BG_MAIN },
+  container: { flex: 1 },
   safeArea: { flex: 1 },
   flex: { flex: 1, justifyContent: "center", padding: SPACING.l },
-  brandContainer: { alignItems: "center", marginBottom: SPACING.xl },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#FFF",
-    justifyContent: "center",
-    alignItems: "center",
-    ...SHADOWS.subtle,
+  brandContainer: { alignItems: "center", marginBottom: SPACING.xl * 1.5 },
+  logoGlowContainer: {
+    shadowColor: COLORS.ACCENT,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+    elevation: 10,
     marginBottom: SPACING.m,
   },
-  brandName: {
-    fontSize: 32,
-    fontWeight: "900",
-    color: COLORS.TEXT_PRIMARY,
-    letterSpacing: -1,
+  logoCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.5)",
   },
-  tagline: { fontSize: 14, color: COLORS.TEXT_SECONDARY, marginTop: 4 },
+  brandName: {
+    fontSize: 42,
+    fontWeight: "900",
+    color: "#FFF",
+    letterSpacing: -1,
+    textShadowColor: "rgba(0,0,0,0.2)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  tagline: {
+    fontSize: 16,
+    color: "rgba(255,255,255,0.8)",
+    marginTop: 4,
+    fontWeight: "500",
+  },
   authCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: 32,
-    padding: SPACING.l,
+    padding: SPACING.xl,
     ...SHADOWS.premium,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.8)",
+    borderColor: "#FFF",
   },
   cardTitle: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: "800",
     marginBottom: SPACING.l,
     color: COLORS.TEXT_PRIMARY,
+    textAlign: "center",
   },
   mainBtn: {
-    backgroundColor: COLORS.PRIMARY,
     height: 58,
     borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
     marginTop: SPACING.m,
+    ...SHADOWS.md,
   },
-  btnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  btnText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
   btnDisabled: { opacity: 0.7 },
   switchBtn: { marginTop: SPACING.l, alignItems: "center" },
-  switchText: { color: COLORS.PRIMARY, fontWeight: "600", fontSize: 14 },
+  switchText: { color: COLORS.PRIMARY, fontWeight: "600", fontSize: 15 },
   errorContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FEF2F2",
     padding: SPACING.m,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: SPACING.m,
     borderWidth: 1,
     borderColor: "#FECACA",
@@ -168,5 +205,6 @@ const styles = StyleSheet.create({
     marginLeft: SPACING.s,
     fontSize: 14,
     flex: 1,
+    fontWeight: "500",
   },
 });

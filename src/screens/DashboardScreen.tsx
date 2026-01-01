@@ -14,12 +14,15 @@ import {
   TextInput,
   Platform,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import { COLORS, SPACING, SHADOWS } from "../constants/theme";
+import { COLORS, SPACING, SHADOWS, GRADIENTS } from "../constants/theme";
 import { Skeleton } from "../components/Skeleton";
+import StatsDashboard from "../components/StatsDashboard";
 import useAuthStore from "../../store/authStore";
 import { usePosts, useToggleLikePost, useCreatePost } from "../hooks/posts";
 import { Post } from "../types/posts";
@@ -38,6 +41,7 @@ export default function DashboardScreen() {
     Map<string, Animated.Value>
   >(new Map());
   const [isCreateModalVisible, setIsCreateModalVisible] = React.useState(false);
+  const [isStatsVisible, setIsStatsVisible] = React.useState(false);
   const [postContent, setPostContent] = React.useState("");
   const [postLocation, setPostLocation] = React.useState("");
 
@@ -139,35 +143,39 @@ export default function DashboardScreen() {
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <View style={styles.avatarGlow}>
-            <View style={styles.avatar}>
+          <View style={styles.avatarContainer}>
+            <LinearGradient
+              colors={GRADIENTS.primary}
+              style={styles.avatarGradient}
+            >
               <Text style={styles.avatarText}>{item.user[0]}</Text>
-            </View>
+            </LinearGradient>
           </View>
           <View style={{ flex: 1 }}>
             <View style={styles.nameRow}>
               <Text style={styles.userName}>{item.user}</Text>
               {isMatch && (
-                <View style={styles.matchBadge}>
-                  <MaterialCommunityIcons
-                    name="paw"
-                    size={12}
-                    color={COLORS.PRIMARY}
-                  />
-                  <Text style={styles.matchText}>Great Match</Text>
-                </View>
+                <LinearGradient
+                  colors={GRADIENTS.accent}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.matchBadge}
+                >
+                  <MaterialCommunityIcons name="paw" size={10} color="#FFF" />
+                  <Text style={styles.matchText}>98% Match</Text>
+                </LinearGradient>
               )}
             </View>
             <View style={styles.metaRow}>
               <Feather name="map-pin" size={12} color={COLORS.TEXT_TERTIARY} />
               <Text style={styles.metaText}>
-                {item.location} • {item.time}
+                {item.location ? "Nearby" : "Unknown"} • {item.time}
               </Text>
             </View>
           </View>
           <TouchableOpacity style={styles.moreBtn}>
             <Feather
-              name="more-vertical"
+              name="more-horizontal"
               size={20}
               color={COLORS.TEXT_TERTIARY}
             />
@@ -185,6 +193,8 @@ export default function DashboardScreen() {
             />
           </View>
         )}
+
+        <View style={styles.divider} />
 
         <View style={styles.actionRow}>
           <TouchableOpacity
@@ -206,11 +216,19 @@ export default function DashboardScreen() {
             >
               <Feather
                 name="heart"
-                size={18}
+                size={20}
                 color={
                   item.isLiked ?? likedPosts.has(item.id)
                     ? COLORS.DANGER
                     : COLORS.TEXT_SECONDARY
+                }
+                style={
+                  (item.isLiked ?? likedPosts.has(item.id)) && {
+                    shadowColor: COLORS.DANGER,
+                    shadowOpacity: 0.3,
+                    shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 2 },
+                  }
                 }
               />
             </Animated.View>
@@ -219,22 +237,29 @@ export default function DashboardScreen() {
                 styles.actionText,
                 (item.isLiked ?? likedPosts.has(item.id)) && {
                   color: COLORS.DANGER,
+                  fontWeight: "700",
                 },
               ]}
             >
-              {item.likes}
+              {item.likes || 0}
             </Text>
           </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionBtn}>
-            <Feather
-              name="message-circle"
-              size={18}
-              color={COLORS.TEXT_SECONDARY}
-            />
+            <View style={styles.iconCircle}>
+              <Feather
+                name="message-circle"
+                size={18}
+                color={COLORS.TEXT_SECONDARY}
+              />
+            </View>
             <Text style={styles.actionText}>Reply</Text>
           </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionBtn}>
-            <Feather name="share" size={18} color={COLORS.TEXT_SECONDARY} />
+            <View style={styles.iconCircle}>
+              <Feather name="share-2" size={18} color={COLORS.TEXT_SECONDARY} />
+            </View>
             <Text style={styles.actionText}>Share</Text>
           </TouchableOpacity>
         </View>
@@ -294,6 +319,16 @@ export default function DashboardScreen() {
                 </View>
 
                 <View style={styles.headerActions}>
+                  <TouchableOpacity
+                    style={[styles.iconBtn, { marginRight: 8 }]}
+                    onPress={() => setIsStatsVisible(true)}
+                  >
+                    <Feather
+                      name="bar-chart-2"
+                      size={22}
+                      color={COLORS.TEXT_PRIMARY}
+                    />
+                  </TouchableOpacity>
                   <TouchableOpacity style={styles.iconBtn}>
                     <Feather
                       name="bell"
@@ -368,6 +403,16 @@ export default function DashboardScreen() {
       <TouchableOpacity style={styles.fab} onPress={handleCreatePost}>
         <Feather name="plus" size={24} color="#FFF" />
       </TouchableOpacity>
+
+      {/* Stats Dashboard Modal */}
+      <Modal
+        visible={isStatsVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsStatsVisible(false)}
+      >
+        <StatsDashboard onClose={() => setIsStatsVisible(false)} />
+      </Modal>
 
       {/* Create Post Modal */}
       <Modal
@@ -516,92 +561,103 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.l,
     marginHorizontal: SPACING.m,
     ...SHADOWS.md,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.6)",
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: SPACING.m,
   },
-  avatarGlow: {
-    padding: 2,
-    borderRadius: 22,
-    backgroundColor: "#EEF2FF",
+  avatarContainer: {
     marginRight: SPACING.s,
+    ...SHADOWS.sm,
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.PRIMARY,
+  avatarGradient: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
   },
-  avatarText: { color: "#FFF", fontWeight: "bold", fontSize: 18 },
+  avatarText: { color: "#FFF", fontWeight: "bold", fontSize: 20 },
   nameRow: { flexDirection: "row", alignItems: "center" },
-  userName: { fontWeight: "700", color: COLORS.TEXT_PRIMARY, fontSize: 16 },
+  userName: { fontWeight: "700", color: COLORS.TEXT_PRIMARY, fontSize: 17 },
   matchBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#EEF2FF",
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
     marginLeft: 8,
   },
   matchText: {
     fontSize: 11,
-    color: COLORS.PRIMARY,
+    color: "#FFF",
     fontWeight: "700",
     marginLeft: 4,
   },
   metaRow: { flexDirection: "row", alignItems: "center", marginTop: 2 },
-  metaText: { color: COLORS.TEXT_SECONDARY, fontSize: 12, marginLeft: 4 },
+  metaText: { color: COLORS.TEXT_SECONDARY, fontSize: 13, marginLeft: 4 },
   moreBtn: { padding: SPACING.xs },
   postContent: {
-    fontSize: 15,
+    fontSize: 16,
     color: COLORS.TEXT_PRIMARY,
-    lineHeight: 22,
+    lineHeight: 24,
     marginBottom: SPACING.l,
+    letterSpacing: 0.2,
   },
   mediaContainer: {
     width: "100%",
-    height: 200,
-    borderRadius: 16,
+    height: 240,
+    borderRadius: 20,
     overflow: "hidden",
     marginBottom: SPACING.l,
+    ...SHADOWS.sm,
   },
   postImage: {
     width: "100%",
     height: "100%",
   },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.BG_INPUT,
+    marginBottom: SPACING.m,
+  },
   actionRow: {
     flexDirection: "row",
-    paddingTop: SPACING.m,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.BG_INPUT,
+    justifyContent: "space-between",
+    paddingHorizontal: SPACING.s,
   },
   actionBtn: {
     flexDirection: "row",
     alignItems: "center",
-    marginRight: SPACING.xl,
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.BG_INPUT,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
   },
   actionText: {
-    marginLeft: 6,
     color: COLORS.TEXT_SECONDARY,
     fontWeight: "600",
-    fontSize: 13,
+    fontSize: 14,
   },
   fab: {
     position: "absolute",
-    bottom: Platform.OS === "ios" ? 120 : 90, // Above tab bar (88+20 on iOS, 70+20 on Android)
+    bottom: Platform.OS === "ios" ? 120 : 90,
     right: SPACING.l,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: COLORS.PRIMARY,
     alignItems: "center",
     justifyContent: "center",
-    ...SHADOWS.lg,
+    ...SHADOWS.premium,
     zIndex: 1000,
     elevation: 10,
   },

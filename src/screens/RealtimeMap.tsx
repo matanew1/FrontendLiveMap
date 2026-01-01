@@ -21,7 +21,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Feather, FontAwesome5, Ionicons } from "@expo/vector-icons";
-import { COLORS, SHADOWS } from "../constants/theme";
+import { LinearGradient } from "expo-linear-gradient";
+import { COLORS, SHADOWS, GRADIENTS } from "../constants/theme";
 import { socket, connectSocket } from "../lib/socket";
 import useLocationStore from "../../store/locationStore";
 import useAuthStore from "../../store/authStore";
@@ -161,6 +162,12 @@ export default function RealtimeMap() {
                 ]}
               />
               <View style={styles.myMarkerDot}>
+                <LinearGradient
+                  colors={GRADIENTS.primary}
+                  style={StyleSheet.absoluteFill}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                />
                 {user?.avatarUrl ? (
                   <Image
                     source={{ uri: user.avatarUrl }}
@@ -198,7 +205,10 @@ export default function RealtimeMap() {
               }}
             >
               <View style={styles.otherMarker}>
-                <View style={styles.otherMarkerInner}>
+                <LinearGradient
+                  colors={GRADIENTS.glass}
+                  style={styles.otherMarkerInner}
+                >
                   {u.avatarUrl ? (
                     <Image
                       source={{ uri: u.avatarUrl }}
@@ -207,7 +217,7 @@ export default function RealtimeMap() {
                   ) : (
                     <FontAwesome5 name="dog" size={18} color="#FFF" />
                   )}
-                </View>
+                </LinearGradient>
               </View>
               <Callout tooltip>
                 <View style={styles.calloutWrapper}>
@@ -320,6 +330,12 @@ export default function RealtimeMap() {
                 });
               }}
             >
+              <LinearGradient
+                colors={GRADIENTS.primary}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              />
               <Ionicons name="navigate" size={20} color="#FFF" />
               <Text style={[styles.glassBtnText, { color: "#FFF" }]}>
                 Recenter
@@ -382,14 +398,13 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: COLORS.PRIMARY,
     borderWidth: 3,
     borderColor: "#FFF",
     ...SHADOWS.md,
     overflow: "hidden",
   },
   markerAvatar: { width: "100%", height: "100%" },
-  avatarPlaceholder: { flex: 1, backgroundColor: COLORS.PRIMARY },
+  avatarPlaceholder: { flex: 1, backgroundColor: "transparent" },
 
   otherMarker: {
     width: 46,
@@ -404,7 +419,6 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: COLORS.ACCENT,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -463,9 +477,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+    overflow: "hidden",
   },
   glassBtnActive: { backgroundColor: "#1A1A1A" },
-  primaryBtn: { backgroundColor: COLORS.PRIMARY, flex: 1.4 },
+  primaryBtn: { flex: 1.4 },
   glassBtnText: { fontSize: 15, fontWeight: "700", color: "#1A1A1A" },
 
   // Improved Callout

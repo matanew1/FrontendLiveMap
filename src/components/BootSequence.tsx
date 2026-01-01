@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import { View, StyleSheet, Animated, Text, Easing } from "react-native";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import { COLORS, SPACING, SHADOWS } from "../constants/theme";
+import { LinearGradient } from "expo-linear-gradient";
+import { COLORS, SPACING, SHADOWS, GRADIENTS } from "../constants/theme";
 
 interface BootStep {
   label: string;
@@ -67,7 +68,12 @@ export default function BootSequence({
   }, [steps]);
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={GRADIENTS.primary}
+      style={styles.container}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
       <Animated.View
         style={[
           styles.inner,
@@ -77,13 +83,18 @@ export default function BootSequence({
         <View style={styles.content}>
           <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
             <View style={styles.iconGlow}>
-              <View style={styles.iconContainer}>
+              <LinearGradient
+                colors={GRADIENTS.glass}
+                style={styles.iconContainer}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
                 <MaterialCommunityIcons
                   name="dog-side"
                   size={58}
-                  color={COLORS.PRIMARY}
+                  color="#FFF"
                 />
-              </View>
+              </LinearGradient>
             </View>
           </Animated.View>
 
@@ -146,43 +157,46 @@ export default function BootSequence({
           </View>
         </View>
       </Animated.View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BG_MAIN,
     justifyContent: "center",
     alignItems: "center",
   },
   inner: { width: "100%", alignItems: "center" },
   content: { alignItems: "center", width: "85%" },
   iconGlow: {
-    padding: 2,
-    borderRadius: 50,
-    backgroundColor: "rgba(79, 70, 229, 0.1)",
+    padding: 4,
+    borderRadius: 60,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     marginBottom: SPACING.l,
   },
   iconContainer: {
     width: 110,
     height: 110,
-    backgroundColor: "#FFF",
     borderRadius: 55,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
     ...SHADOWS.md,
   },
   title: {
-    fontSize: 34,
+    fontSize: 42,
     fontWeight: "900",
-    color: COLORS.TEXT_PRIMARY,
+    color: "#FFF",
     letterSpacing: -1,
+    textShadowColor: "rgba(0,0,0,0.2)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: COLORS.TEXT_SECONDARY,
+    color: "rgba(255,255,255,0.7)",
     marginBottom: SPACING.xxl,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -193,14 +207,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: SPACING.m,
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.03)",
+    borderColor: "rgba(255,255,255,0.1)",
   },
   stepRowCompleted: {
-    backgroundColor: "#FFF",
-    borderColor: "rgba(0,0,0,0.05)",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderColor: "#FFF",
     ...SHADOWS.sm,
   },
   iconBox: { width: 24, marginRight: SPACING.m, alignItems: "center" },
@@ -208,12 +222,12 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.BG_INPUT,
+    backgroundColor: "rgba(255,255,255,0.3)",
   },
   stepText: {
     flex: 1,
     fontSize: 15,
-    color: COLORS.TEXT_TERTIARY,
+    color: "rgba(255,255,255,0.8)",
     fontWeight: "500",
   },
   stepTextCompleted: { color: COLORS.TEXT_PRIMARY, fontWeight: "700" },
@@ -221,16 +235,16 @@ const styles = StyleSheet.create({
   progressBarBg: {
     width: "60%",
     height: 4,
-    backgroundColor: COLORS.BG_INPUT,
+    backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: 2,
     overflow: "hidden",
     marginBottom: SPACING.m,
   },
-  progressFill: { height: "100%", backgroundColor: COLORS.PRIMARY },
+  progressFill: { height: "100%", backgroundColor: "#FFF" },
   footerText: {
     fontSize: 10,
     fontWeight: "800",
-    color: COLORS.TEXT_TERTIARY,
+    color: "rgba(255,255,255,0.6)",
     letterSpacing: 2,
   },
 });
