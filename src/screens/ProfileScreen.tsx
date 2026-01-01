@@ -33,7 +33,7 @@ const BACKEND_URL =
 
 export default function ProfileScreen() {
   const { user } = useAuthStore();
-  const { data: profile, isLoading } = useProfile();
+  const { data: profile, isLoading, error, refetch } = useProfile();
   const updateProfileMutation = useUpdateProfile();
   const signOutMutation = useSignOut();
   const uploadAvatarMutation = useUploadAvatar();
@@ -147,6 +147,25 @@ export default function ProfileScreen() {
             style={{ borderRadius: 24, marginBottom: 16 }}
           />
         </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Feather name="alert-triangle" size={48} color={COLORS.TEXT_TERTIARY} />
+        <Text style={{ marginTop: SPACING.m, color: COLORS.TEXT_SECONDARY }}>
+          Unable to load profile
+        </Text>
+        <TouchableOpacity onPress={() => refetch()} style={styles.retryBtn}>
+          <Text style={styles.retryBtnText}>Retry</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
@@ -530,5 +549,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     marginLeft: SPACING.s,
+  },
+  retryBtn: {
+    marginTop: SPACING.l,
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.m,
+    borderRadius: 12,
+  },
+  retryBtnText: {
+    color: "#FFF",
+    fontWeight: "600",
+    fontSize: 16,
   },
 });

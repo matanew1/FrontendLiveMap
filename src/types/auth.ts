@@ -8,20 +8,25 @@ export interface User {
   role?: string;
 }
 
-export interface AuthResponse {
-  statusCode: number;
+export interface ApiResponse<T> {
+  success: boolean;
   message: string;
-  data: {
-    user: User;
-    session: {
-      access_token: string;
-      refresh_token: string;
-    };
-  };
+  data: T;
+  error?: string;
 }
 
-export interface ProfileResponse {
-  statusCode: number;
-  message: string;
-  data: User;
+export interface AuthData {
+  user: User;
+  accessToken: string;
+  refreshToken?: string; // Optional as it might not be in all responses
 }
+
+export interface SigninResponse extends ApiResponse<AuthData> {}
+
+export interface SignupResponse
+  extends ApiResponse<{
+    user: User;
+    session?: { access_token: string; refresh_token: string };
+  }> {}
+
+export interface ProfileResponse extends ApiResponse<User> {}

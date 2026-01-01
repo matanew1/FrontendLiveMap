@@ -24,6 +24,7 @@ export default function AuthScreen() {
   const signIn = useSignIn();
   const signUp = useSignUp();
   const isLoading = signIn.isPending || signUp.isPending;
+  const error = signIn.error || signUp.error;
 
   return (
     <View style={styles.container}>
@@ -46,6 +47,15 @@ export default function AuthScreen() {
             <Text style={styles.cardTitle}>
               {isSignUp ? "Create Account" : "Welcome Back"}
             </Text>
+
+            {error && (
+              <View style={styles.errorContainer}>
+                <Feather name="alert-circle" size={20} color={COLORS.DANGER} />
+                <Text style={styles.errorText}>
+                  {error.message || "An error occurred. Please try again."}
+                </Text>
+              </View>
+            )}
 
             <ModernInput
               label="Email"
@@ -143,4 +153,20 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.7 },
   switchBtn: { marginTop: SPACING.l, alignItems: "center" },
   switchText: { color: COLORS.PRIMARY, fontWeight: "600", fontSize: 14 },
+  errorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF2F2",
+    padding: SPACING.m,
+    borderRadius: 12,
+    marginBottom: SPACING.m,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+  },
+  errorText: {
+    color: COLORS.DANGER,
+    marginLeft: SPACING.s,
+    fontSize: 14,
+    flex: 1,
+  },
 });

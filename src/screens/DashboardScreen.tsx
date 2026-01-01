@@ -9,13 +9,19 @@ import {
   StatusBar,
   Dimensions,
   Image,
+  Animated,
+  Modal,
+  TextInput,
+  Platform,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { COLORS, SPACING, SHADOWS } from "../constants/theme";
 import { Skeleton } from "../components/Skeleton";
 import useAuthStore from "../../store/authStore";
-import { usePosts, useToggleLikePost } from "../hooks/posts";
+import { usePosts, useToggleLikePost, useCreatePost } from "../hooks/posts";
 import { Post } from "../types/posts";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -23,9 +29,17 @@ const isSmallScreen = screenWidth < 375;
 
 export default function DashboardScreen() {
   const { user } = useAuthStore();
-  const { data: posts, isLoading, refetch } = usePosts();
+  const { data: posts, isLoading, error, refetch } = usePosts();
   const toggleLikeMutation = useToggleLikePost();
+  const createPostMutation = useCreatePost();
   const [refreshing, setRefreshing] = React.useState(false);
+  const [likedPosts, setLikedPosts] = React.useState<Set<string>>(new Set());
+  const [likeAnimations, setLikeAnimations] = React.useState<
+    Map<string, Animated.Value>
+  >(new Map());
+  const [isCreateModalVisible, setIsCreateModalVisible] = React.useState(false);
+  const [postContent, setPostContent] = React.useState("");
+  const [postLocation, setPostLocation] = React.useState("");
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -34,10 +48,85 @@ export default function DashboardScreen() {
   };
 
   const handleLikePress = async (postId: string) => {
+    // Add haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Create and run animation
+    const animation = likeAnimations.get(postId) || new Animated.Value(1);
+    if (!likeAnimations.has(postId)) {
+      setLikeAnimations((prev) => new Map(prev).set(postId, animation));
+    }
+
+    Animated.sequence([
+      Animated.timing(animation, {
+        toValue: 1.3,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(animation, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Optimistically update local liked state
+    const wasLiked = likedPosts.has(postId);
+    setLikedPosts((prev) => {
+      const newSet = new Set(prev);
+      if (wasLiked) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+
     try {
-      await toggleLikeMutation.mutateAsync(postId);
+      await toggleLikeMutation.mutateAsync({
+        postId,
+        isCurrentlyLiked: wasLiked,
+      });
     } catch (error) {
+      // Revert on error
+      setLikedPosts((prev) => {
+        const newSet = new Set(prev);
+        if (wasLiked) {
+          newSet.add(postId);
+        } else {
+          newSet.delete(postId);
+        }
+        return newSet;
+      });
       console.error("Failed to toggle like:", error);
+    }
+  };
+
+  const handleCreatePost = () => {
+    setIsCreateModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsCreateModalVisible(false);
+    setPostContent("");
+    setPostLocation("");
+  };
+
+  const handleSubmitPost = async () => {
+    if (!postContent.trim()) return;
+
+    try {
+      console.log("Creating post...");
+      await createPostMutation.mutateAsync({
+        content: postContent.trim(),
+        location: postLocation.trim() || undefined,
+      });
+
+      handleCloseModal();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      console.error("Failed to create post:", error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
 
@@ -101,9 +190,40 @@ export default function DashboardScreen() {
           <TouchableOpacity
             style={styles.actionBtn}
             onPress={() => handleLikePress(item.id)}
+            disabled={toggleLikeMutation.isPending}
           >
-            <Feather name="heart" size={18} color={COLORS.DANGER} />
-            <Text style={styles.actionText}>{item.likes}</Text>
+            <Animated.View
+              style={[
+                styles.likeButton,
+                {
+                  transform: [
+                    {
+                      scale: likeAnimations.get(item.id) || 1,
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Feather
+                name="heart"
+                size={18}
+                color={
+                  item.isLiked ?? likedPosts.has(item.id)
+                    ? COLORS.DANGER
+                    : COLORS.TEXT_SECONDARY
+                }
+              />
+            </Animated.View>
+            <Text
+              style={[
+                styles.actionText,
+                (item.isLiked ?? likedPosts.has(item.id)) && {
+                  color: COLORS.DANGER,
+                },
+              ]}
+            >
+              {item.likes}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn}>
             <Feather
@@ -122,60 +242,198 @@ export default function DashboardScreen() {
     );
   };
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.BG_MAIN} />
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
-        {/* RESPONSIVE GLASSMOPRHISM HEADER */}
+  if (isLoading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.container}>
         <View style={styles.glassHeader}>
           <View style={styles.headerContent}>
-            <View style={styles.headerTopRow}>
-              <View style={styles.titleContainer}>
-                <Text style={styles.headerTitle} numberOfLines={1}>
-                  Activity
-                </Text>
-              </View>
-
-              <View style={styles.headerActions}>
-                <TouchableOpacity style={styles.iconBtn}>
-                  <Feather name="bell" size={22} color={COLORS.TEXT_PRIMARY} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <Text style={styles.headerSubtitle} numberOfLines={2}>
-              Stay connected with your dog community
-            </Text>
+            <Text style={styles.headerTitle}>Activity</Text>
           </View>
         </View>
-
-        {isLoading ? (
-          <View style={{ padding: SPACING.m }}>
-            <Skeleton
-              width="100%"
-              height={150}
-              style={{ marginBottom: 20, borderRadius: 24 }}
-            />
-            <Skeleton width="100%" height={150} style={{ borderRadius: 24 }} />
-          </View>
-        ) : (
-          <FlatList
-            data={posts || []}
-            renderItem={renderPost}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-          />
-        )}
+        <View style={{ padding: SPACING.m }}>
+          <Skeleton height={200} style={{ marginBottom: SPACING.m }} />
+          <Skeleton height={200} style={{ marginBottom: SPACING.m }} />
+          <Skeleton height={200} />
+        </View>
       </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Feather name="alert-triangle" size={48} color={COLORS.TEXT_TERTIARY} />
+        <Text style={{ marginTop: SPACING.m, color: COLORS.TEXT_SECONDARY }}>
+          Unable to load posts
+        </Text>
+        <TouchableOpacity onPress={() => refetch()} style={styles.retryBtn}>
+          <Text style={styles.retryBtnText}>Retry</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, position: "relative" }}>
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.BG_MAIN} />
+        <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
+          {/* RESPONSIVE GLASSMOPRHISM HEADER */}
+          <View style={styles.glassHeader}>
+            <View style={styles.headerContent}>
+              <View style={styles.headerTopRow}>
+                <View style={styles.titleContainer}>
+                  <Text style={styles.headerTitle} numberOfLines={1}>
+                    Activity
+                  </Text>
+                </View>
+
+                <View style={styles.headerActions}>
+                  <TouchableOpacity style={styles.iconBtn}>
+                    <Feather
+                      name="bell"
+                      size={22}
+                      color={COLORS.TEXT_PRIMARY}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <Text style={styles.headerSubtitle} numberOfLines={2}>
+                Stay connected with your dog community
+              </Text>
+            </View>
+          </View>
+
+          {isLoading ? (
+            <View style={{ padding: SPACING.m }}>
+              <Skeleton
+                width="100%"
+                height={150}
+                style={{ marginBottom: 20, borderRadius: 24 }}
+              />
+              <Skeleton
+                width="100%"
+                height={150}
+                style={{ borderRadius: 24 }}
+              />
+            </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Feather name="alert-circle" size={48} color={COLORS.DANGER} />
+              <Text style={styles.errorTitle}>Unable to load posts</Text>
+              <Text style={styles.errorMessage}>
+                {error?.message || "Something went wrong while fetching posts"}
+              </Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() => refetch()}
+              >
+                <Text style={styles.retryText}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : posts && Array.isArray(posts) && posts.length > 0 ? (
+            <FlatList
+              data={posts}
+              renderItem={renderPost}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              }
+            />
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Feather
+                name="file-text"
+                size={48}
+                color={COLORS.TEXT_TERTIARY}
+              />
+              <Text style={styles.emptyTitle}>No posts yet</Text>
+              <Text style={styles.emptyMessage}>
+                Be the first to share something with your dog community!
+              </Text>
+            </View>
+          )}
+        </SafeAreaView>
+      </View>
 
       {/* Floating Action Button */}
-      <TouchableOpacity style={styles.fab}>
+      <TouchableOpacity style={styles.fab} onPress={handleCreatePost}>
         <Feather name="plus" size={24} color="#FFF" />
       </TouchableOpacity>
+
+      {/* Create Post Modal */}
+      <Modal
+        visible={isCreateModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleCloseModal}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Create Post</Text>
+            <TouchableOpacity
+              onPress={handleCloseModal}
+              style={styles.closeButton}
+            >
+              <Feather name="x" size={24} color={COLORS.TEXT_SECONDARY} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.modalContent}>
+            <Text style={styles.inputLabel}>What's on your mind?</Text>
+            <TextInput
+              style={styles.contentInput}
+              placeholder="Share something with your dog community..."
+              placeholderTextColor={COLORS.TEXT_TERTIARY}
+              value={postContent}
+              onChangeText={setPostContent}
+              multiline
+              maxLength={500}
+              textAlignVertical="top"
+            />
+
+            <Text style={styles.inputLabel}>Location (optional)</Text>
+            <TextInput
+              style={styles.locationInput}
+              placeholder="Where are you?"
+              placeholderTextColor={COLORS.TEXT_TERTIARY}
+              value={postLocation}
+              onChangeText={setPostLocation}
+              maxLength={100}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={handleCloseModal}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.submitButton,
+                  (!postContent.trim() || createPostMutation.isPending) &&
+                    styles.submitButtonDisabled,
+                ]}
+                onPress={handleSubmitPost}
+                disabled={!postContent.trim() || createPostMutation.isPending}
+              >
+                <Text style={styles.submitButtonText}>
+                  {createPostMutation.isPending ? "Posting..." : "Post"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -335,7 +593,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: "absolute",
-    bottom: SPACING.l,
+    bottom: Platform.OS === "ios" ? 120 : 90, // Above tab bar (88+20 on iOS, 70+20 on Android)
     right: SPACING.l,
     width: 56,
     height: 56,
@@ -344,5 +602,157 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     ...SHADOWS.lg,
+    zIndex: 1000,
+    elevation: 10,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: SPACING.xl,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.TEXT_PRIMARY,
+    marginTop: SPACING.m,
+    marginBottom: SPACING.s,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: "center",
+    marginBottom: SPACING.l,
+  },
+  retryButton: {
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: SPACING.l,
+    paddingVertical: SPACING.m,
+    borderRadius: 12,
+  },
+  retryText: {
+    color: "#FFF",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: SPACING.xl,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.TEXT_PRIMARY,
+    marginTop: SPACING.m,
+    marginBottom: SPACING.s,
+  },
+  emptyMessage: {
+    fontSize: 14,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: "center",
+  },
+  likeButton: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: COLORS.BG_MAIN,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: SPACING.l,
+    paddingVertical: SPACING.m,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BG_INPUT,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: COLORS.TEXT_PRIMARY,
+  },
+  closeButton: {
+    padding: SPACING.s,
+  },
+  modalContent: {
+    flex: 1,
+    padding: SPACING.l,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.s,
+  },
+  contentInput: {
+    borderWidth: 1,
+    borderColor: COLORS.BG_INPUT,
+    borderRadius: 12,
+    padding: SPACING.m,
+    fontSize: 16,
+    color: COLORS.TEXT_PRIMARY,
+    minHeight: 120,
+    maxHeight: 200,
+    marginBottom: SPACING.l,
+    backgroundColor: "#FFF",
+  },
+  locationInput: {
+    borderWidth: 1,
+    borderColor: COLORS.BG_INPUT,
+    borderRadius: 12,
+    padding: SPACING.m,
+    fontSize: 16,
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.xl,
+    backgroundColor: "#FFF",
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: SPACING.m,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.BG_INPUT,
+    paddingVertical: SPACING.m,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.TEXT_SECONDARY,
+  },
+  submitButton: {
+    flex: 1,
+    backgroundColor: COLORS.PRIMARY,
+    paddingVertical: SPACING.m,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  submitButtonDisabled: {
+    backgroundColor: COLORS.TEXT_TERTIARY,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFF",
+  },
+  retryBtn: {
+    marginTop: SPACING.l,
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.m,
+    borderRadius: 12,
+  },
+  retryBtnText: {
+    color: "#FFF",
+    fontWeight: "600",
+    fontSize: 16,
   },
 });

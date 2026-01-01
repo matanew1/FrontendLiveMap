@@ -1,9 +1,14 @@
 const BACKEND_URL =
-  process.env.EXPO_PUBLIC_BACKEND_URL || "http://localhost:3000";
+  process.env.EXPO_PUBLIC_BACKEND_URL || "http://10.0.0.7:3000";
 
 import { apiClient } from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { User, AuthResponse, ProfileResponse } from "../types/auth";
+import {
+  User,
+  SigninResponse,
+  SignupResponse,
+  ApiResponse,
+} from "../types/auth";
 
 export const signIn = async (
   email: string,
@@ -22,13 +27,18 @@ export const signIn = async (
     throw new Error(errorData.message || "Sign in failed");
   }
 
-  const data: AuthResponse = await response.json();
-  const { user, session } = data.data;
+  const json: SigninResponse = await response.json();
+
+  if (!json.success || !json.data) {
+    throw new Error(json.message || "Sign in failed");
+  }
+
+  const { user, accessToken, refreshToken } = json.data;
 
   return {
     user,
-    accessToken: session.access_token,
-    refreshToken: session.refresh_token,
+    accessToken,
+    refreshToken: refreshToken || "",
   };
 };
 
@@ -49,13 +59,28 @@ export const signUp = async (
     throw new Error(errorData.message || "Sign up failed");
   }
 
-  const data: AuthResponse = await response.json();
-  const { user, session } = data.data;
+  const json: SignupResponse = await response.json();
+
+  if (!json.success || !json.data) {
+    throw new Error(json.message || "Sign up failed");
+  }
+
+  // The backend mirrors Supabase signup response.
+  // If email confirmation is required, session might be null.
+  // We'll handle what we can.
+  const { user, session } = json.data;
+
+  const accessToken = session?.access_token || "";
+  const refreshToken = session?.refresh_token || "";
+
+  // If no token, we might need to throw or return empty strings
+  // For now, we return what we have, but the caller should check.
+  // Ideally, the UI should redirect to login if no token.
 
   return {
     user,
-    accessToken: session.access_token,
-    refreshToken: session.refresh_token,
+    accessToken,
+    refreshToken,
   };
 };
 

@@ -204,11 +204,6 @@ export default function RealtimeMap() {
                       source={{ uri: u.avatarUrl }}
                       style={styles.nearbyAvatar}
                     />
-                  ) : user?.avatarUrl ? (
-                    <Image
-                      source={{ uri: user.avatarUrl }}
-                      style={styles.nearbyAvatar}
-                    />
                   ) : (
                     <FontAwesome5 name="dog" size={18} color="#FFF" />
                   )}

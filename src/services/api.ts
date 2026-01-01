@@ -25,12 +25,26 @@ const refreshAccessToken = async (
     throw new Error("Failed to refresh token");
   }
 
-  const data: AuthResponse = await response.json();
-  const { user, session } = data.data;
+  const json = await response.json();
+
+  // Expecting ApiResponse<{ session: { access_token, refresh_token }, user }> or similar
+  // The spec says "Returns Supabase refresh payload".
+  // If wrapped in ApiResponse: json.data contains the payload.
+  const payload = json.data || json;
+
+  // Supabase refresh payload usually has access_token, refresh_token at top level or in session
+  const accessToken = payload.access_token || payload.session?.access_token;
+  const newRefreshToken =
+    payload.refresh_token || payload.session?.refresh_token;
+  const user = payload.user;
+
+  if (!accessToken) {
+    throw new Error("Invalid refresh response");
+  }
 
   return {
-    accessToken: session.access_token,
-    refreshToken: session.refresh_token,
+    accessToken,
+    refreshToken: newRefreshToken || refreshToken,
     user,
   };
 };

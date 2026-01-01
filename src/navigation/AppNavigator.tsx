@@ -111,16 +111,25 @@ const AppNavigator = () => {
       updateStep(1, true);
       const token = await AsyncStorage.getItem("accessToken");
 
-      if (token && !user) {
+      if (token) {
         updateStep(2, true);
         try {
-          await refetch();
+          const result = await refetch();
+          if (!result.data || !result.data.id) {
+            throw new Error("Invalid user data");
+          }
+          // Always update user with fresh data from server
+          useAuthStore.getState().setUser(result.data);
         } catch (error) {
           await AsyncStorage.multiRemove(["accessToken", "refreshToken"]);
           useAuthStore.getState().setUser(null);
         }
       } else {
         updateStep(2, true);
+        // If no token, ensure user is cleared
+        if (!token) {
+          useAuthStore.getState().setUser(null);
+        }
       }
 
       updateStep(3, true);

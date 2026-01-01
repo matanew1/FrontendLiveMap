@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   getPosts,
   getUserPosts,
@@ -28,7 +29,7 @@ export const usePosts = () => {
     queryFn: getPosts,
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: (failureCount, error) => {
-      // Don't retry on 404s (endpoint not implemented yet)
+      console.log(`Posts query failed (attempt ${failureCount + 1}):`, error);
       if (
         error?.message?.includes("404") ||
         error?.message?.includes("not available")
@@ -83,8 +84,10 @@ export const useCreatePost = () => {
   return useMutation({
     mutationFn: createPost,
     onSuccess: () => {
-      // Invalidate and refetch posts
       queryClient.invalidateQueries({ queryKey: postKeys.lists() });
+    },
+    onError: (error) => {
+      console.error("Failed to create post:", error);
     },
   });
 };
@@ -102,6 +105,9 @@ export const useUpdatePost = () => {
       // Invalidate lists
       queryClient.invalidateQueries({ queryKey: postKeys.lists() });
     },
+    onError: (error) => {
+      console.error("Failed to update post:", error);
+    },
   });
 };
 
@@ -117,6 +123,9 @@ export const useDeletePost = () => {
       // Invalidate lists
       queryClient.invalidateQueries({ queryKey: postKeys.lists() });
     },
+    onError: (error) => {
+      console.error("Failed to delete post:", error);
+    },
   });
 };
 
@@ -125,21 +134,100 @@ export const useToggleLikePost = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: toggleLikePost,
-    onSuccess: (result, postId) => {
-      // Update the like count in the post cache
-      queryClient.setQueryData<Post | undefined>(
+    mutationFn: ({ postId }: { postId: string; isCurrentlyLiked: boolean }) =>
+      toggleLikePost(postId),
+    onMutate: async ({
+      postId,
+      isCurrentlyLiked,
+    }: {
+      postId: string;
+      isCurrentlyLiked: boolean;
+    }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: postKeys.detail(postId) });
+      await queryClient.cancelQueries({ queryKey: postKeys.lists() });
+
+      // Snapshot previous values
+      const previousPost = queryClient.getQueryData(postKeys.detail(postId));
+      const previousPosts = queryClient.getQueryData(postKeys.lists());
+
+      // Optimistically update individual post cache
+      queryClient.setQueryData(
         postKeys.detail(postId),
-        (oldPost) => {
-          if (!oldPost) return oldPost;
+        (old: Post | undefined) => {
+          if (!old) return old;
           return {
-            ...oldPost,
-            likes: result.likes,
+            ...old,
+            likes: old.likes + (isCurrentlyLiked ? -1 : 1), // Decrement if currently liked, increment if not
+            isLiked: !isCurrentlyLiked, // Toggle the liked state
           };
         }
       );
-      // Invalidate lists to update like counts there too
-      queryClient.invalidateQueries({ queryKey: postKeys.lists() });
+
+      // Optimistically update posts list cache
+      queryClient.setQueryData(
+        postKeys.lists(),
+        (oldPosts: Post[] | undefined) => {
+          if (!oldPosts) return oldPosts;
+          return oldPosts.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  likes: post.likes + (isCurrentlyLiked ? -1 : 1), // Decrement if currently liked, increment if not
+                  isLiked: !isCurrentlyLiked,
+                }
+              : post
+          );
+        }
+      );
+
+      return { previousPost, previousPosts };
+    },
+    onSuccess: (data, variables) => {
+      const { postId } = variables;
+      // Update individual post cache with server response
+      queryClient.setQueryData(
+        postKeys.detail(postId),
+        (oldPost: Post | undefined) => {
+          if (!oldPost) return oldPost;
+          return {
+            ...oldPost,
+            likes: data.likes,
+            isLiked: !oldPost.isLiked, // Toggle the liked state
+          };
+        }
+      );
+
+      // Update posts list cache with server response
+      queryClient.setQueryData(
+        postKeys.lists(),
+        (oldPosts: Post[] | undefined) => {
+          if (!oldPosts) return oldPosts;
+          return oldPosts.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  likes: data.likes,
+                  isLiked: !post.isLiked,
+                }
+              : post
+          );
+        }
+      );
+    },
+    onError: (err, variables, context) => {
+      const { postId } = variables;
+      // Revert individual post cache
+      if (context?.previousPost) {
+        queryClient.setQueryData(postKeys.detail(postId), context.previousPost);
+      }
+
+      // Revert posts list cache
+      if (context?.previousPosts) {
+        queryClient.setQueryData(postKeys.lists(), context.previousPosts);
+      }
+
+      console.error("Failed to toggle like:", err);
     },
   });
 };
